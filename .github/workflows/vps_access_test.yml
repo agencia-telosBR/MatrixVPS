@@ -41,3 +41,5 @@ jobs:
             echo "MATRIX_PROJECT_OK"
             docker ps --format "{{.Names}}|{{.Status}}" | grep -E "matrix_v1_intelligence|sdr-n8n" || true
           '
+
+# trigger: 2026-10-08
