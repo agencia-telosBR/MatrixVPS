@@ -1,0 +1,43 @@
+name: Matrix VPS Access Test
+
+on:
+  push:
+    paths:
+      - ".github/workflows/vps_access_test.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-vps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Prepare SSH key
+        shell: bash
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/matrix_vps
+          chmod 600 ~/.ssh/matrix_vps
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Test read-only VPS access
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/matrix_vps -o BatchMode=yes -o ConnectTimeout=15 "$VPS_USER@$VPS_HOST" '
+            echo "MATRIX_SSH_OK"
+            whoami
+            hostname
+            test -d /opt/matrix-scraper-v1
+            echo "MATRIX_PROJECT_OK"
+            docker ps --format "{{.Names}}|{{.Status}}" | grep -E "matrix_v1_intelligence|sdr-n8n" || true
+          '
