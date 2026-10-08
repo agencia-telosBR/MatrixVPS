@@ -1,0 +1,64 @@
+name: Apply Remove Regional Map
+
+on:
+  push:
+    paths:
+      - ".github/workflows/apply_remove_regional_map.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Prepare SSH key
+        shell: bash
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/matrix_vps
+          chmod 600 ~/.ssh/matrix_vps
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Apply approved Matrix patch
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/matrix_vps -o BatchMode=yes -o ConnectTimeout=15 "$VPS_USER@$VPS_HOST" '
+            set -euo pipefail
+            cd /opt/matrix-scraper-v1
+            mkdir -p ops/approved
+            curl -fsSL https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/98d3c9361229511c162619377fcd02911a484f70/ops/approved/remove_regional_map_keep_table.sh -o ops/approved/remove_regional_map_keep_table.sh
+            chown root:root ops/approved/remove_regional_map_keep_table.sh
+            chmod 750 ops/approved/remove_regional_map_keep_table.sh
+            bash ops/approved/remove_regional_map_keep_table.sh
+          '
+
+      - name: Verify regional map disabled
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/matrix_vps -o BatchMode=yes -o ConnectTimeout=15 "$VPS_USER@$VPS_HOST" '
+            set -euo pipefail
+            echo "=== container ==="
+            docker ps --filter name=matrix_v1_intelligence --format "{{.Names}}|{{.Status}}"
+            echo "=== regional map references in source ==="
+            grep -n "regional.*mapa_raio_500km_top3\|regional.:None" /opt/matrix-scraper-v1/app/matrix_intelligence/regional_v4.py || true
+            echo "=== remaining regional PNGs ==="
+            count=$(find /opt/matrix-scraper-v1/matrix_intel_exports -type f -name "mapa_raio_500km_top3.png" 2>/dev/null | wc -l)
+            echo "REGIONAL_PNG_COUNT=$count"
+            test "$count" -eq 0
+            echo "MATRIX_REMOVE_REGIONAL_MAP_OK"
+          '
