@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd /opt/matrix-scraper-v1
-
-echo "=== FRONTEND GEO MAP REFERENCES ==="
-grep -RIn --exclude-dir=.git -E "fitBounds|setView|MAPA DE COBERTURA LOCAL|CARREGAR MAPA|neighborhood|selectedAreas|selected_areas|areas proximas|áreas próximas|L\.map|Leaflet" app/static app/templates 2>/dev/null | sed -n '1,320p'
-
-echo "=== MAP RENDERER REFERENCES ==="
-grep -RIn --exclude-dir=.git -E "fitBounds|setView|Leaflet|OpenStreetMap|mapa_local_observado|local_observations|bounds|zoom" app/matrix_intelligence 2>/dev/null | sed -n '1,360p'
+echo "=== FRONTEND APP.JS GEO BLOCK ==="
+sed -n '920,1040p' app/static/app.js
+echo "=== REAL MAPS V4 ==="
+sed -n '1,360p' app/matrix_intelligence/real_maps_v4.py
+echo "=== MAPS.PY LOCAL ==="
+grep -n -A220 -B40 -E "mapa_local_observado|render.*local|local.*map|fetch_basemap|fitBounds|bounds" app/matrix_intelligence/maps.py app/matrix_intelligence/real_maps_v4.py 2>/dev/null || true
