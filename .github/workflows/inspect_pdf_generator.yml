@@ -26,7 +26,7 @@ jobs:
           chmod 600 ~/.ssh/matrix_vps
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Inspect PDF generator
+      - name: Inspect n8n PDF workflow
         shell: bash
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
@@ -35,22 +35,29 @@ jobs:
           set -euo pipefail
           ssh -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST" '
             set -e
-            echo "=== /OPT DIRECTORIES ==="
-            find /opt -maxdepth 2 -type d | sort | sed -n "1,260p"
-            echo "=== LIKELY GENERATOR FILES UNDER /OPT ==="
-            find /opt -type f \( -iname "*.py" -o -iname "*.js" -o -iname "*.html" -o -iname "*.ts" -o -iname "*.json" \) -size -3M 2>/dev/null | while read f; do
-              if grep -qiE "Radar Competitivo|Documento confidencial|Resumo executivo|Plano de melhoria|reportlab|weasyprint|puppeteer|playwright.*pdf|page\.pdf|canvas\.Canvas" "$f" 2>/dev/null; then
-                echo "--- $f"
-                grep -niE "Radar Competitivo|Documento confidencial|Resumo executivo|Plano de melhoria|reportlab|weasyprint|puppeteer|playwright.*pdf|page\.pdf|canvas\.Canvas" "$f" 2>/dev/null | head -30
-              fi
-            done
-            echo "=== CONTAINERS ==="
-            docker ps --format "{{.Names}}|{{.Image}}|{{.Status}}"
-            echo "=== MOUNTS ==="
-            for c in $(docker ps --format "{{.Names}}"); do
-              echo "--- $c"
-              docker inspect "$c" --format "{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}" 2>/dev/null
-            done
+            echo "=== N8N WORKFLOWS ==="
+            docker exec -u node sdr-n8n n8n export:workflow --all --output=/tmp/matrix_workflows.json >/tmp/n8n_export.log 2>&1 || { cat /tmp/n8n_export.log; exit 1; }
+            docker cp sdr-n8n:/tmp/matrix_workflows.json /tmp/matrix_workflows.json >/dev/null
+            python3 - <<'"'"'PY'"'"'
+import json,re
+p="/tmp/matrix_workflows.json"
+data=json.load(open(p))
+if isinstance(data,dict): data=[data]
+print("count",len(data))
+terms=re.compile(r"radar|competitivo|pdf|gotenberg|relat[oó]rio|report",re.I)
+for w in data:
+    s=json.dumps(w,ensure_ascii=False)
+    if terms.search(s):
+        print("--- WORKFLOW",w.get("id"),w.get("name"),"active=",w.get("active"))
+        for n in w.get("nodes",[]):
+            ns=json.dumps(n,ensure_ascii=False)
+            if terms.search(ns):
+                print("NODE",n.get("name"),n.get("type"))
+                params=n.get("parameters",{})
+                txt=json.dumps(params,ensure_ascii=False)
+                print(txt[:3500])
+PY
+            rm -f /tmp/matrix_workflows.json
           '
 
-# scan /opt v3
+# inspect n8n v4
