@@ -1,10 +1,10 @@
-name: Inspect PDF Generator
+name: Inspect PDF Generator DB
 
 on:
   push:
     paths:
       - ".github/workflows/inspect_pdf_generator.yml"
-      - "ops/approved/inspect_n8n_pdf.sh"
+      - "ops/approved/inspect_n8n_db_pdf.sh"
   workflow_dispatch:
 
 permissions:
@@ -13,7 +13,7 @@ permissions:
 jobs:
   inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 6
     steps:
       - name: Prepare SSH
         shell: bash
@@ -27,16 +27,16 @@ jobs:
           chmod 600 ~/.ssh/matrix_vps
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Inspect n8n PDF workflow
+      - name: Inspect n8n database for PDF workflow
         shell: bash
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
         run: |
           set -euo pipefail
-          curl -fsSL https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/main/ops/approved/inspect_n8n_pdf.sh -o /tmp/inspect_n8n_pdf.sh
-          chmod 700 /tmp/inspect_n8n_pdf.sh
-          scp -i ~/.ssh/matrix_vps -o BatchMode=yes /tmp/inspect_n8n_pdf.sh "$VPS_USER@$VPS_HOST:/tmp/inspect_n8n_pdf.sh"
-          ssh -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST" 'bash /tmp/inspect_n8n_pdf.sh; rm -f /tmp/inspect_n8n_pdf.sh'
+          curl -fsSL https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/main/ops/approved/inspect_n8n_db_pdf.sh -o /tmp/inspect_n8n_db_pdf.sh
+          chmod 700 /tmp/inspect_n8n_db_pdf.sh
+          scp -i ~/.ssh/matrix_vps -o BatchMode=yes /tmp/inspect_n8n_db_pdf.sh "$VPS_USER@$VPS_HOST:/tmp/inspect_n8n_db_pdf.sh"
+          ssh -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST" 'timeout 120 bash /tmp/inspect_n8n_db_pdf.sh; rc=$?; rm -f /tmp/inspect_n8n_db_pdf.sh; exit $rc'
 
-# fixed v5
+# db inspect v6
