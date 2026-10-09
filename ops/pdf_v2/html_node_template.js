@@ -3,7 +3,7 @@ const r=base.report||{};
 const t=r.territorial||{};
 const esc=v=>String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
 const txt=v=>String(v??'').trim();
-const num=v=>{const n=Number(String(v??'').replace(',','.'));return Number.isFinite(n)?n:null;};
+const num=v=>{if(v===null||v===undefined||String(v).trim()==='')return null;const n=Number(String(v).replace(',','.'));return Number.isFinite(n)?n:null;};
 const fmtNota=v=>num(v)===null?'—':num(v).toFixed(1).replace('.',',');
 const fmtPos=v=>num(v)===null?'—':`${Math.round(num(v))}º`;
 const scoreClass=v=>Number(v)>=80?'green':Number(v)>=60?'blue':Number(v)>=40?'gold':'red';
@@ -181,7 +181,7 @@ const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><style
  <h2 class="h2">Oportunidades Estratégicas Identificadas</h2>
  <table><thead><tr><th>Oportunidade</th><th>Evidência Observada</th><th>Ação Recomendada</th></tr></thead><tbody>${oppRows}</tbody></table>
  <div class="card navy"><h3>Direção recomendada</h3><p>${esc(direction)}</p></div>
- <div class="note">Este relatório apresenta fatos observados na amostra coletada e interpretações determinísticas baseadas nesses dados. Não representa garantia de posição futura ou de volume de clientes.</div>
+
  </div><div class="footer"><span>Documento confidencial</span><span>Página 5</span></div></section>
 </body></html>`;
 return [{json:{...base,html_chars:html.length,pdf_template_version:'premium-v2'},binary:{data:{data:Buffer.from(html,'utf8').toString('base64'),mimeType:'text/html',fileName:'index.html',fileExtension:'html'}}}];
