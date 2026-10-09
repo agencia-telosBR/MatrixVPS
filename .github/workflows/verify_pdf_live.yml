@@ -1,0 +1,54 @@
+name: Verify Live PDF Premium V2
+
+on:
+  push:
+    paths:
+      - ".github/workflows/verify_pdf_live.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Prepare SSH
+        shell: bash
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/matrix_vps
+          chmod 600 ~/.ssh/matrix_vps
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Verify live PDF generator
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/main/ops/approved/verify_pdf_live.sh -o /tmp/verify_pdf_live.sh
+          chmod 700 /tmp/verify_pdf_live.sh
+          scp -i ~/.ssh/matrix_vps -o BatchMode=yes /tmp/verify_pdf_live.sh "$VPS_USER@$VPS_HOST:/tmp/verify_pdf_live.sh"
+          ssh -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST" 'timeout 300 bash /tmp/verify_pdf_live.sh; rc=$?; rm -f /tmp/verify_pdf_live.sh; exit $rc'
+
+      - name: Fetch verified PDF
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          scp -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST:/opt/matrix-scraper-v1/pdf_v2_live_verified.pdf" ./pdf_v2_live_verified.pdf
+
+      - name: Upload verified PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-premium-v2-live-verified
+          path: pdf_v2_live_verified.pdf
+          retention-days: 3
