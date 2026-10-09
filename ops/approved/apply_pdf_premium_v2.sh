@@ -200,8 +200,9 @@ done
 docker network connect matrix_v1_network sdr-n8n 2>/dev/null || true
 
 echo "[8/9] Verify published workflow and create isolated test PDF"
-docker exec -u node sdr-n8n n8n export:workflow --id="$WFID" --published --output=/tmp/pdf_workflow_after.json >/dev/null
-docker cp sdr-n8n:/tmp/pdf_workflow_after.json "$BACKUP/pdf_workflow_after.json" >/dev/null
+docker exec -u root sdr-n8n rm -f /home/node/pdf_workflow_after.json /home/node/pdfv2_sample.json /home/node/render_pdfv2_test.js /home/node/index.html /home/node/pdf_v2_test.pdf
+docker exec -u node sdr-n8n n8n export:workflow --id="$WFID" --published --output=/home/node/pdf_workflow_after.json >/dev/null
+docker cp sdr-n8n:/home/node/pdf_workflow_after.json "$BACKUP/pdf_workflow_after.json" >/dev/null
 python3 - <<'PY'
 import json
 w=json.load(open('/opt/matrix-scraper-v1/'+'backup-pdf-premium-v2-' + open('/dev/null','w').name)) if False else None
@@ -240,31 +241,30 @@ report={
 }
 json.dump({'report':report},open('/tmp/pdfv2_sample.json','w'),ensure_ascii=False)
 PY
-docker cp /tmp/pdfv2_sample.json sdr-n8n:/tmp/pdfv2_sample.json >/dev/null
+docker exec -i -u node sdr-n8n sh -c 'cat > /home/node/pdfv2_sample.json' < /tmp/pdfv2_sample.json
 cat > /tmp/render_pdfv2_test.js <<'NODE'
 const fs=require('fs');
-const wf=JSON.parse(fs.readFileSync('/tmp/pdf_workflow_after.json','utf8'));
+const wf=JSON.parse(fs.readFileSync('/home/node/pdf_workflow_after.json','utf8'));
 const w=Array.isArray(wf)?wf[0]:wf;
 const node=w.nodes.find(n=>n.name==='PDF - Gera HTML premium');
-const sample=JSON.parse(fs.readFileSync('/tmp/pdfv2_sample.json','utf8'));
+const sample=JSON.parse(fs.readFileSync('/home/node/pdfv2_sample.json','utf8'));
 const fn=new Function('$json',node.parameters.jsCode);
 const out=fn(sample);
 const html=Buffer.from(out[0].binary.data.data,'base64');
-fs.writeFileSync('/tmp/index.html',html);
+fs.writeFileSync('/home/node/index.html',html);
 (async()=>{
  const fd=new FormData();
  fd.append('files',new Blob([html],{type:'text/html'}),'index.html');
  for(const [k,v] of Object.entries({paperWidth:'8.27',paperHeight:'11.69',marginTop:'0',marginBottom:'0',marginLeft:'0',marginRight:'0',printBackground:'true',preferCssPageSize:'true'})) fd.append(k,v);
  const r=await fetch('http://gotenberg:3000/forms/chromium/convert/html',{method:'POST',body:fd});
  if(!r.ok) throw new Error('Gotenberg '+r.status+' '+await r.text());
- fs.writeFileSync('/tmp/pdf_v2_test.pdf',Buffer.from(await r.arrayBuffer()));
- console.log('TEST_PDF_OK',fs.statSync('/tmp/pdf_v2_test.pdf').size);
+ fs.writeFileSync('/home/node/pdf_v2_test.pdf',Buffer.from(await r.arrayBuffer()));
+ console.log('TEST_PDF_OK',fs.statSync('/home/node/pdf_v2_test.pdf').size);
 })().catch(e=>{console.error(e);process.exit(1)});
 NODE
-docker cp "$BACKUP/pdf_workflow_after.json" sdr-n8n:/tmp/pdf_workflow_after.json >/dev/null
-docker cp /tmp/render_pdfv2_test.js sdr-n8n:/tmp/render_pdfv2_test.js >/dev/null
-docker exec sdr-n8n node /tmp/render_pdfv2_test.js
-docker cp sdr-n8n:/tmp/pdf_v2_test.pdf "$ROOT/pdf_v2_test.pdf" >/dev/null
+docker exec -i -u node sdr-n8n sh -c 'cat > /home/node/render_pdfv2_test.js' < /tmp/render_pdfv2_test.js
+docker exec -u node sdr-n8n node /home/node/render_pdfv2_test.js
+docker cp sdr-n8n:/home/node/pdf_v2_test.pdf "$ROOT/pdf_v2_test.pdf" >/dev/null
 if command -v pdfinfo >/dev/null 2>&1; then pdfinfo "$ROOT/pdf_v2_test.pdf" | grep -E 'Pages:|Page size:|File size:'; fi
 if command -v pdftotext >/dev/null 2>&1; then
   pdftotext "$ROOT/pdf_v2_test.pdf" /tmp/pdfv2.txt
