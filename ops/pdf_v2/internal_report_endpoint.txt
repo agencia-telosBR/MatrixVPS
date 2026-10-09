@@ -1,0 +1,88 @@
+    @router.get('/api/internal/report-data/{job_id}/{company_id}')
+    def internal_report_data(job_id:int,company_id:int,x_matrix_internal:str|None=Header(default=None)):
+        """Dados territoriais e competitivos para o gerador interno de PDF."""
+        expected=os.getenv('MATRIX_INTERNAL_REPORT_TOKEN','')
+        if not expected or not x_matrix_internal or not hmac.compare_digest(expected,x_matrix_internal):
+            raise HTTPException(403,'Acesso interno negado')
+        if job_id<1 or company_id<1:
+            raise HTTPException(400,'Parâmetros inválidos')
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute('''SELECT id,terms,neighborhoods,city,state,total_searches,completed_searches,
+                                      observed_results,unique_companies,prospectable_companies
+                               FROM scrape_jobs WHERE id=%s''',(job_id,))
+                job=cur.fetchone()
+                cur.execute('''SELECT qualified_count,processed_count,status
+                               FROM matrix_intelligence_jobs WHERE job_id=%s''',(job_id,))
+                proc=cur.fetchone()
+                cur.execute('''SELECT snapshot,maps,fit,ai_status,approval_status
+                               FROM matrix_intelligence_companies
+                               WHERE job_id=%s AND company_id=%s''',(job_id,company_id))
+                intel=cur.fetchone()
+                cur.execute('''SELECT status,center_label,search_count,results
+                               FROM matrix_intelligence_regional_jobs WHERE job_id=%s''',(job_id,))
+                regional_job=cur.fetchone()
+                cur.execute('''SELECT zone,count(*) AS n
+                               FROM matrix_intelligence_regional_searches
+                               WHERE job_id=%s AND status='completed' GROUP BY zone''',(job_id,))
+                zone_counts={r['zone']:int(r['n']) for r in cur.fetchall()}
+                cur.execute('''SELECT zone,source_key,name,distance_km,website_url,maps_url
+                               FROM matrix_intelligence_regional_candidates
+                               WHERE job_id=%s ORDER BY zone,distance_km''',(job_id,))
+                candidates=[dict(r) for r in cur.fetchall()]
+                cur.execute('''SELECT DISTINCT ON (c.normalized_name)
+                                      c.normalized_name,c.name,c.website_url,c.website_status
+                               FROM companies c
+                               JOIN search_results sr ON sr.company_id=c.id
+                               JOIN searches s ON s.id=sr.search_id
+                               WHERE s.job_id=%s AND c.normalized_name IS NOT NULL
+                               ORDER BY c.normalized_name,c.last_seen_at DESC NULLS LAST''',(job_id,))
+                direct_profiles=[dict(r) for r in cur.fetchall()]
+                for c in candidates:
+                    cur.execute('''SELECT rating,review_count,website_url,category_primary
+                                   FROM companies
+                                   WHERE source_key=%s OR lower(name)=lower(%s)
+                                   ORDER BY CASE WHEN source_key=%s THEN 0 ELSE 1 END,last_seen_at DESC NULLS LAST
+                                   LIMIT 1''',(c.get('source_key'),c.get('name'),c.get('source_key')))
+                    p=cur.fetchone()
+                    c['rating']=float(p['rating']) if p and p.get('rating') is not None else None
+                    c['review_count']=int(p['review_count']) if p and p.get('review_count') is not None else None
+                    c['category']=p.get('category_primary') if p else None
+                    c['presence_label']='Identificado em ≥1 busca'
+                    c['searches_in_band']=zone_counts.get(c.get('zone'),0)
+        maps=(intel or {}).get('maps') or {}
+        map_data=None
+        local_name=maps.get('local')
+        if local_name=='mapa_local_observado.png':
+            path=Path(EXPORT_ROOT)/str(job_id)/str(company_id)/local_name
+            if path.is_file():
+                map_data='data:image/png;base64,'+base64.b64encode(path.read_bytes()).decode('ascii')
+        presence={}
+        for p in direct_profiles:
+            key=(p.get('normalized_name') or '').strip().lower()
+            if key:
+                presence[key]={'name':p.get('name'),'site_identificado':bool(p.get('website_url')),
+                               'website_status':p.get('website_status')}
+        regional_by_zone={z:None for z in ('X','Y','Z')}
+        for c in candidates:
+            z=c.get('zone')
+            if z in regional_by_zone and regional_by_zone[z] is None:
+                regional_by_zone[z]=c
+        return {
+            'ok':True,
+            'job':dict(job) if job else {},
+            'processing':dict(proc) if proc else {},
+            'company_intelligence':{
+                'fit':intel.get('fit') if intel else None,
+                'snapshot':intel.get('snapshot') if intel else {},
+                'maps':maps,
+                'ai_status':intel.get('ai_status') if intel else None,
+                'approval_status':intel.get('approval_status') if intel else None,
+            },
+            'mapa_local_data_uri':map_data,
+            'center_label':regional_job.get('center_label') if regional_job else None,
+            'regional_status':regional_job.get('status') if regional_job else None,
+            'regional_search_count':regional_job.get('search_count') if regional_job else 0,
+            'regional':[regional_by_zone[z] or {'zone':z,'name':None,'presence_label':'Não identificado'} for z in ('X','Y','Z')],
+            'competitor_presence':presence,
+        }
