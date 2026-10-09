@@ -1,4 +1,4 @@
-name: Verify Live PDF Premium V2
+name: Verify GEO-Aligned PDF Live
 
 on:
   push:
@@ -46,9 +46,19 @@ jobs:
         run: |
           scp -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST:/opt/matrix-scraper-v1/pdf_v2_live_verified.pdf" ./pdf_v2_live_verified.pdf
 
-      - name: Upload verified PDF
+      - name: Fetch aligned local map
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          scp -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST:/opt/matrix-scraper-v1/matrix_intel_exports/25/1396/mapa_local_observado.png" ./mapa_local_observado.png
+
+      - name: Upload verified PDF and map
         uses: actions/upload-artifact@v4
         with:
-          name: pdf-premium-v2-live-verified
-          path: pdf_v2_live_verified.pdf
+          name: geo-aligned-pdf-live
+          path: |
+            pdf_v2_live_verified.pdf
+            mapa_local_observado.png
           retention-days: 3
