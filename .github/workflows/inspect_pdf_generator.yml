@@ -12,7 +12,7 @@ permissions:
 jobs:
   inspect:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 8
     steps:
       - name: Prepare SSH
         shell: bash
@@ -26,7 +26,7 @@ jobs:
           chmod 600 ~/.ssh/matrix_vps
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Inspect generator
+      - name: Inspect PDF generator
         shell: bash
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
@@ -35,11 +35,22 @@ jobs:
           set -euo pipefail
           ssh -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST" '
             set -e
-            cd /opt/matrix-scraper-v1
-            echo "=== PROJECT ROOT ==="
-            find . -maxdepth 3 -type f | sort | sed -n "1,260p"
-            echo "=== PDF/REPORT RELATED FILES ==="
-            find . -type f \( -iname "*pdf*" -o -iname "*report*" -o -iname "*relatorio*" -o -iname "*radar*" \) | sort | sed -n "1,300p"
-            echo "=== MATCHES ==="
-            grep -RIn --exclude-dir=.git --exclude="*.pdf" --exclude="*.png" --exclude="*.jpg" --exclude="*.jpeg" -E "Radar Competitivo|Documento confidencial|Resumo executivo|Plano de melhoria|reportlab|weasyprint|wkhtmltopdf|playwright.*pdf|canvas.Canvas" . 2>/dev/null | sed -n "1,320p"
+            echo "=== /OPT DIRECTORIES ==="
+            find /opt -maxdepth 2 -type d | sort | sed -n "1,260p"
+            echo "=== LIKELY GENERATOR FILES UNDER /OPT ==="
+            find /opt -type f \( -iname "*.py" -o -iname "*.js" -o -iname "*.html" -o -iname "*.ts" -o -iname "*.json" \) -size -3M 2>/dev/null | while read f; do
+              if grep -qiE "Radar Competitivo|Documento confidencial|Resumo executivo|Plano de melhoria|reportlab|weasyprint|puppeteer|playwright.*pdf|page\.pdf|canvas\.Canvas" "$f" 2>/dev/null; then
+                echo "--- $f"
+                grep -niE "Radar Competitivo|Documento confidencial|Resumo executivo|Plano de melhoria|reportlab|weasyprint|puppeteer|playwright.*pdf|page\.pdf|canvas\.Canvas" "$f" 2>/dev/null | head -30
+              fi
+            done
+            echo "=== CONTAINERS ==="
+            docker ps --format "{{.Names}}|{{.Image}}|{{.Status}}"
+            echo "=== MOUNTS ==="
+            for c in $(docker ps --format "{{.Names}}"); do
+              echo "--- $c"
+              docker inspect "$c" --format "{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}" 2>/dev/null
+            done
           '
+
+# scan /opt v3
