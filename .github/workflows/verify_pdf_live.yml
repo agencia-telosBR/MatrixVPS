@@ -1,4 +1,4 @@
-name: Verify GEO-Aligned PDF Live
+name: Verify GEO-Aligned PDF Live Final
 
 on:
   push:
