@@ -1,0 +1,38 @@
+name: Inspect GEO Map Alignment
+
+on:
+  push:
+    paths:
+      - ".github/workflows/inspect_geo_map_alignment.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Prepare SSH
+        shell: bash
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/matrix_vps
+          chmod 600 ~/.ssh/matrix_vps
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Inspect map alignment
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/main/ops/approved/inspect_geo_map_alignment.sh -o /tmp/inspect_geo_map_alignment.sh
+          chmod 700 /tmp/inspect_geo_map_alignment.sh
+          scp -i ~/.ssh/matrix_vps -o BatchMode=yes /tmp/inspect_geo_map_alignment.sh "$VPS_USER@$VPS_HOST:/tmp/inspect_geo_map_alignment.sh"
+          ssh -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST" 'timeout 180 bash /tmp/inspect_geo_map_alignment.sh; rc=$?; rm -f /tmp/inspect_geo_map_alignment.sh; exit $rc'
