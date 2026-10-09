@@ -1,10 +1,10 @@
-name: Inspect Active PDF Generator
+name: Inspect PDF Data V2
 
 on:
   push:
     paths:
       - ".github/workflows/inspect_pdf_generator.yml"
-      - "ops/approved/inspect_pdf_active.sh"
+      - "ops/approved/inspect_pdf_data_v2.sh"
   workflow_dispatch:
 
 permissions:
@@ -27,16 +27,16 @@ jobs:
           chmod 600 ~/.ssh/matrix_vps
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Inspect active PDF generator
+      - name: Inspect PDF data
         shell: bash
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
         run: |
           set -euo pipefail
-          curl -fsSL https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/main/ops/approved/inspect_pdf_active.sh -o /tmp/inspect_pdf_active.sh
-          chmod 700 /tmp/inspect_pdf_active.sh
-          scp -i ~/.ssh/matrix_vps -o BatchMode=yes /tmp/inspect_pdf_active.sh "$VPS_USER@$VPS_HOST:/tmp/inspect_pdf_active.sh"
-          ssh -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST" 'timeout 180 bash /tmp/inspect_pdf_active.sh; rc=$?; rm -f /tmp/inspect_pdf_active.sh; exit $rc'
+          curl -fsSL https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/main/ops/approved/inspect_pdf_data_v2.sh -o /tmp/inspect_pdf_data_v2.sh
+          chmod 700 /tmp/inspect_pdf_data_v2.sh
+          scp -i ~/.ssh/matrix_vps -o BatchMode=yes /tmp/inspect_pdf_data_v2.sh "$VPS_USER@$VPS_HOST:/tmp/inspect_pdf_data_v2.sh"
+          ssh -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST" 'timeout 180 bash /tmp/inspect_pdf_data_v2.sh; rc=$?; rm -f /tmp/inspect_pdf_data_v2.sh; exit $rc'
 
-# active inspect v8
+# data v2
