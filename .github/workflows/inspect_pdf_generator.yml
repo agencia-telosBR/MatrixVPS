@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - ".github/workflows/inspect_pdf_generator.yml"
+      - "ops/approved/inspect_n8n_pdf.sh"
   workflow_dispatch:
 
 permissions:
@@ -33,31 +34,9 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
         run: |
           set -euo pipefail
-          ssh -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST" '
-            set -e
-            echo "=== N8N WORKFLOWS ==="
-            docker exec -u node sdr-n8n n8n export:workflow --all --output=/tmp/matrix_workflows.json >/tmp/n8n_export.log 2>&1 || { cat /tmp/n8n_export.log; exit 1; }
-            docker cp sdr-n8n:/tmp/matrix_workflows.json /tmp/matrix_workflows.json >/dev/null
-            python3 - <<'"'"'PY'"'"'
-import json,re
-p="/tmp/matrix_workflows.json"
-data=json.load(open(p))
-if isinstance(data,dict): data=[data]
-print("count",len(data))
-terms=re.compile(r"radar|competitivo|pdf|gotenberg|relat[oó]rio|report",re.I)
-for w in data:
-    s=json.dumps(w,ensure_ascii=False)
-    if terms.search(s):
-        print("--- WORKFLOW",w.get("id"),w.get("name"),"active=",w.get("active"))
-        for n in w.get("nodes",[]):
-            ns=json.dumps(n,ensure_ascii=False)
-            if terms.search(ns):
-                print("NODE",n.get("name"),n.get("type"))
-                params=n.get("parameters",{})
-                txt=json.dumps(params,ensure_ascii=False)
-                print(txt[:3500])
-PY
-            rm -f /tmp/matrix_workflows.json
-          '
+          curl -fsSL https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/main/ops/approved/inspect_n8n_pdf.sh -o /tmp/inspect_n8n_pdf.sh
+          chmod 700 /tmp/inspect_n8n_pdf.sh
+          scp -i ~/.ssh/matrix_vps -o BatchMode=yes /tmp/inspect_n8n_pdf.sh "$VPS_USER@$VPS_HOST:/tmp/inspect_n8n_pdf.sh"
+          ssh -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST" 'bash /tmp/inspect_n8n_pdf.sh; rm -f /tmp/inspect_n8n_pdf.sh'
 
-# inspect n8n v4
+# fixed v5
