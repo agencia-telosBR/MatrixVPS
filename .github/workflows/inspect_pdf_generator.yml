@@ -1,0 +1,45 @@
+name: Inspect PDF Generator
+
+on:
+  push:
+    paths:
+      - ".github/workflows/inspect_pdf_generator.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Prepare SSH
+        shell: bash
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/matrix_vps
+          chmod 600 ~/.ssh/matrix_vps
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Inspect generator
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST" '
+            set -e
+            cd /opt/matrix-scraper-v1
+            echo "=== PROJECT ROOT ==="
+            find . -maxdepth 3 -type f | sort | sed -n "1,260p"
+            echo "=== PDF/REPORT RELATED FILES ==="
+            find . -type f \( -iname "*pdf*" -o -iname "*report*" -o -iname "*relatorio*" -o -iname "*radar*" \) | sort | sed -n "1,300p"
+            echo "=== MATCHES ==="
+            grep -RIn --exclude-dir=.git --exclude="*.pdf" --exclude="*.png" --exclude="*.jpg" --exclude="*.jpeg" -E "Radar Competitivo|Documento confidencial|Resumo executivo|Plano de melhoria|reportlab|weasyprint|wkhtmltopdf|playwright.*pdf|canvas.Canvas" . 2>/dev/null | sed -n "1,320p"
+          '
