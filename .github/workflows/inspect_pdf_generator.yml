@@ -1,10 +1,10 @@
-name: Inspect Matrix API Bridge
+name: Inspect API Details
 
 on:
   push:
     paths:
       - ".github/workflows/inspect_pdf_generator.yml"
-      - "ops/approved/inspect_matrix_api.sh"
+      - "ops/approved/inspect_api_details.sh"
   workflow_dispatch:
 
 permissions:
@@ -26,16 +26,16 @@ jobs:
           printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/matrix_vps
           chmod 600 ~/.ssh/matrix_vps
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-      - name: Inspect Matrix API
+      - name: Inspect API details
         shell: bash
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
         run: |
           set -euo pipefail
-          curl -fsSL https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/main/ops/approved/inspect_matrix_api.sh -o /tmp/inspect_matrix_api.sh
-          chmod 700 /tmp/inspect_matrix_api.sh
-          scp -i ~/.ssh/matrix_vps -o BatchMode=yes /tmp/inspect_matrix_api.sh "$VPS_USER@$VPS_HOST:/tmp/inspect_matrix_api.sh"
-          ssh -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST" 'timeout 120 bash /tmp/inspect_matrix_api.sh; rc=$?; rm -f /tmp/inspect_matrix_api.sh; exit $rc'
+          curl -fsSL https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/main/ops/approved/inspect_api_details.sh -o /tmp/inspect_api_details.sh
+          chmod 700 /tmp/inspect_api_details.sh
+          scp -i ~/.ssh/matrix_vps -o BatchMode=yes /tmp/inspect_api_details.sh "$VPS_USER@$VPS_HOST:/tmp/inspect_api_details.sh"
+          ssh -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST" 'timeout 120 bash /tmp/inspect_api_details.sh; rc=$?; rm -f /tmp/inspect_api_details.sh; exit $rc'
 
-# api bridge inspect
+# api details
