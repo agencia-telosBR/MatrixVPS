@@ -181,8 +181,7 @@ json.dump(out,open(p,'w'),ensure_ascii=False)
 print('PATCH_WORKFLOW_OK',len(w['nodes']))
 PY
 
-docker cp /tmp/pdf_workflow_edit.json sdr-n8n:/tmp/pdf_workflow_v2.json >/dev/null
-docker exec -u root sdr-n8n chmod 644 /tmp/pdf_workflow_v2.json
+docker exec -i -u node sdr-n8n sh -c 'cat > /tmp/pdf_workflow_v2.json' < /tmp/pdf_workflow_edit.json
 docker exec -u node sdr-n8n n8n import:workflow --input=/tmp/pdf_workflow_v2.json >/tmp/pdfv2-import.log 2>&1 || { cat /tmp/pdfv2-import.log; exit 1; }
 cat /tmp/pdfv2-import.log
 docker exec -u node sdr-n8n n8n publish:workflow --id="$WFID" >/tmp/pdfv2-publish.log 2>&1 || { cat /tmp/pdfv2-publish.log; exit 1; }
