@@ -1,4 +1,4 @@
-name: Inspect GEO Map Alignment
+name: Inspect GEO Map Alignment Detail
 
 on:
   push:
