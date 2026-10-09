@@ -182,11 +182,14 @@ print('PATCH_WORKFLOW_OK',len(w['nodes']))
 PY
 
 docker cp /tmp/pdf_workflow_edit.json sdr-n8n:/tmp/pdf_workflow_v2.json >/dev/null
-docker exec sdr-n8n chmod 644 /tmp/pdf_workflow_v2.json\ndocker exec -u node sdr-n8n n8n import:workflow --input=/tmp/pdf_workflow_v2.json >/tmp/pdfv2-import.log 2>&1 || { cat /tmp/pdfv2-import.log; exit 1; }
+docker exec sdr-n8n chmod 644 /tmp/pdf_workflow_v2.json
+docker exec -u node sdr-n8n n8n import:workflow --input=/tmp/pdf_workflow_v2.json >/tmp/pdfv2-import.log 2>&1 || { cat /tmp/pdfv2-import.log; exit 1; }
 cat /tmp/pdfv2-import.log
 docker exec -u node sdr-n8n n8n publish:workflow --id="$WFID" >/tmp/pdfv2-publish.log 2>&1 || { cat /tmp/pdfv2-publish.log; exit 1; }
 cat /tmp/pdfv2-publish.log
-docker exec -u node sdr-n8n n8n update:workflow --id="$WFID" --active=true >/tmp/pdfv2-activate.log 2>&1 || { cat /tmp/pdfv2-activate.log; exit 1; }\ncat /tmp/pdfv2-activate.log\n
+docker exec -u node sdr-n8n n8n update:workflow --id="$WFID" --active=true >/tmp/pdfv2-activate.log 2>&1 || { cat /tmp/pdfv2-activate.log; exit 1; }
+cat /tmp/pdfv2-activate.log
+
 echo "[7/9] Restart n8n and reattach network"
 docker restart sdr-n8n >/dev/null
 for i in $(seq 1 45); do
