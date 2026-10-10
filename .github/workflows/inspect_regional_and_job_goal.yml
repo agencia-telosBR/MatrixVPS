@@ -1,4 +1,4 @@
-name: Inspect Regional And Job Goal Detail
+name: Inspect Regional And Mobile Export Detail
 
 on:
   push:
