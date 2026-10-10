@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd /opt/matrix-scraper-v1
-echo "=== REGIONAL 200-270 ==="; sed -n '200,270p' app/matrix_intelligence/regional_v4.py
-echo "=== MAIN 2670-2865 ==="; sed -n '2670,2865p' app/main.py
-echo "=== MAIN 45-70 ==="; sed -n '45,70p' app/main.py
-echo "=== SCRAPER 1600-1740 ==="; sed -n '1600,1740p' app/scraper.py
-echo "=== SCRAPER 1770-1935 ==="; sed -n '1770,1935p' app/scraper.py
+echo "=== UI META REFS ==="
+grep -nE "Meta|META|lead_target|exportMeta" app/index.html app/static/app.js || true
+echo "=== EXPORT MOBILE ROUTE ==="
+sed -n '2676,2865p' app/main.py | grep -nE "mode|mobile_phone|phone_normalized|target|enriched|if False" || true
+echo "=== REGIONAL CONFIG ==="
+grep -nE "MATRIX_REGION_SEARCHES_PER_BAND|MATRIX_REGION_RESULTS_PER_SEARCH|MATRIX_REGION_CANDIDATES_PER_SEARCH|distances=" app/matrix_intelligence/regional_v4.py
