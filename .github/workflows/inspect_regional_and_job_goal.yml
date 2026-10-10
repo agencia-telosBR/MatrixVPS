@@ -1,4 +1,4 @@
-name: Inspect Regional And Mobile Export Detail
+name: Verify Regional And Mobile Export
 
 on:
   push:
