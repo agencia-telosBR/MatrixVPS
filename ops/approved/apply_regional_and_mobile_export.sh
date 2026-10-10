@@ -254,8 +254,8 @@ PY
 
 echo "[5/7] Rebuild/restart"
 cd "$ROOT"
-docker compose build app >/tmp/mobile-export-build.log 2>&1 || { tail -160 /tmp/mobile-export-build.log; exit 1; }
-docker compose up -d app worker intelligence >/tmp/mobile-export-up.log 2>&1 || { cat /tmp/mobile-export-up.log; exit 1; }
+docker compose build app worker intelligence >/tmp/mobile-export-build.log 2>&1 || { tail -160 /tmp/mobile-export-build.log; exit 1; }
+docker compose up -d --force-recreate app worker intelligence >/tmp/mobile-export-up.log 2>&1 || { cat /tmp/mobile-export-up.log; exit 1; }
 sleep 5
 
 echo "[6/7] Validações"
@@ -265,6 +265,8 @@ grep -q 'EXPORTAR TODOS COM CELULAR + M2' "$ROOT/app/index.html"
 grep -q 'default=0' "$ROOT/app/main.py"
 grep -q "MATRIX_REGION_SEARCHES_PER_BAND','24'" "$ROOT/app/matrix_intelligence/regional_v4.py"
 grep -q "c.mobile_phone IS NOT NULL" "$ROOT/app/main.py"
+docker exec matrix_v1_worker sh -lc 'grep -q "lead_target = 0  # sem meta" /app/scraper.py'
+docker exec matrix_v1_app sh -lc 'grep -q "EXPORTAR TODOS COM CELULAR + M2" /app/index.html'
 
 echo "[7/7] Health"
 docker ps --filter name=matrix_v1_app --filter name=matrix_v1_worker --filter name=matrix_v1_intelligence --format '{{.Names}}|{{.Status}}'
