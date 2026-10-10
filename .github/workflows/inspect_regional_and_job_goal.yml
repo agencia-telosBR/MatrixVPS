@@ -1,4 +1,4 @@
-name: Inspect Regional And Job Goal
+name: Inspect Regional And Job Goal Detail
 
 on:
   push:
