@@ -1,4 +1,4 @@
-name: Verify Regional And Mobile Export
+name: Inspect Mobile Send Flow
 
 on:
   push:
