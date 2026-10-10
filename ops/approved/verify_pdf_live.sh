@@ -76,7 +76,7 @@ print('MAPA_GERADO',loc,'bairros',neighborhoods)
 PY
 
 docker cp /tmp/force_egelar_map.py matrix_v1_intelligence:/tmp/force_egelar_map.py >/dev/null
-docker exec matrix_v1_intelligence python /tmp/force_egelar_map.py
+docker exec matrix_v1_intelligence sh -lc 'cd /app && PYTHONPATH=/app python /tmp/force_egelar_map.py'
 docker cp matrix_v1_intelligence:/tmp/egelar_map.png "$OUTDIR/mapa_local_observado.png" >/dev/null
 test -s "$OUTDIR/mapa_local_observado.png"
 file "$OUTDIR/mapa_local_observado.png"
