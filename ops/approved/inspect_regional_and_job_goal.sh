@@ -1,19 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd /opt/matrix-scraper-v1
-
-echo "=== REGIONAL SCAN CORE ==="
-sed -n '180,285p' app/matrix_intelligence/regional_v4.py
-
-echo "=== SCRAPER META CORE ==="
-sed -n '1380,1940p' app/scraper.py
-
-echo "=== MAIN PAYLOAD + EXPORT M2 ==="
-sed -n '40,75p' app/main.py
-sed -n '1490,1545p' app/main.py
-sed -n '2670,3075p' app/main.py
-
-echo "=== INDEX + APP JS RELEVANT ==="
-sed -n '20,48p' app/index.html
-sed -n '1,105p' app/static/app.js
-sed -n '165,220p' app/static/app.js
+echo "=== REGIONAL 200-270 ==="; sed -n '200,270p' app/matrix_intelligence/regional_v4.py
+echo "=== MAIN 2670-2865 ==="; sed -n '2670,2865p' app/main.py
+echo "=== MAIN 45-70 ==="; sed -n '45,70p' app/main.py
+echo "=== SCRAPER 1600-1740 ==="; sed -n '1600,1740p' app/scraper.py
+echo "=== SCRAPER 1770-1935 ==="; sed -n '1770,1935p' app/scraper.py
