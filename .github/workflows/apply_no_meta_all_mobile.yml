@@ -1,0 +1,38 @@
+name: Apply No Meta All Mobile
+
+on:
+  push:
+    paths:
+      - ".github/workflows/apply_no_meta_all_mobile.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Prepare SSH
+        shell: bash
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/matrix_vps
+          chmod 600 ~/.ssh/matrix_vps
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Apply final no-meta behavior
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/main/ops/approved/apply_no_meta_all_mobile.sh -o /tmp/apply_no_meta.sh
+          chmod 700 /tmp/apply_no_meta.sh
+          scp -i ~/.ssh/matrix_vps -o BatchMode=yes /tmp/apply_no_meta.sh "$VPS_USER@$VPS_HOST:/tmp/apply_no_meta.sh"
+          ssh -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST" 'bash /tmp/apply_no_meta.sh; rc=$?; rm -f /tmp/apply_no_meta.sh; exit $rc'
