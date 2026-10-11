@@ -1,4 +1,4 @@
-name: Inspect Mobile Send Flow
+name: Inspect Exact Mobile Sheet Send
 
 on:
   push:
