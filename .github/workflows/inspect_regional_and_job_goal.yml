@@ -1,4 +1,4 @@
-name: Inspect Sheet Function Exact
+name: Inspect Sheet Payload Source
 
 on:
   push:
