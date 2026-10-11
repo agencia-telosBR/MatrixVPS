@@ -1,4 +1,4 @@
-name: Inspect Sheet Send Exact
+name: Inspect Sheet Function Exact
 
 on:
   push:
