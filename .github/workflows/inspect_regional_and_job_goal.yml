@@ -1,4 +1,4 @@
-name: Inspect Sheet Payload Source
+name: Inspect Intelligence CLI
 
 on:
   push:
