@@ -38,7 +38,8 @@ pre{white-space:pre-wrap;word-break:break-word;background:#05110c;border:1px sol
 <div class="field"><label>Cidade</label><input id="qpCity" placeholder="São Paulo"></div>
 <div class="field"><label>UF</label><input id="qpState" placeholder="SP"></div>
 <div class="field"><label>Bairros/regiões separados por vírgula</label><input id="qpHoods" placeholder="Tucuruvi, Santana"></div>
-<button id="plan">Gerar plano de consultas</button>
+<div class="field"><label>Serviços canônicos (separados por vírgula)</label><input id="qpServices" value="chiller_rental,chiller_maintenance,chiller_installation,chiller_retrofit,industrial_refrigeration,hvac_industrial"></div>
+<div class="row"><button id="plan">Gerar plano de consultas</button><button id="createSniperJob" class="secondary">Criar Job Sniper</button></div>
 <pre id="planOut">A taxonomia Sniper inclui locação, manutenção, emergência, instalação, retrofit, refrigeração industrial, HVAC, câmara fria, torre e CAG.</pre>
 </section>
 
@@ -82,7 +83,8 @@ async function refreshQueue(){
 }
 $('researchJob').onclick=async()=>{let id=Number($('jobId').value);if(!id)return;try{$('queueStatus').textContent='Enfileirando...';let x=await post('/api/sniper/jobs/'+id+'/research?limit=200',{});$('queueStatus').textContent=JSON.stringify(x,null,2);setTimeout(refreshQueue,1500)}catch(e){$('queueStatus').textContent=e.message}}
 $('runQueue').onclick=async()=>{let id=Number($('jobId').value)||null;try{let x=await post('/api/sniper/queue/run?limit=200'+(id?'&job_id='+id:''),{});$('queueStatus').textContent=JSON.stringify(x,null,2);refreshQueue()}catch(e){$('queueStatus').textContent=e.message}}
-$('plan').onclick=async()=>{try{let body={city:$('qpCity').value,state:$('qpState').value||null,neighborhoods:$('qpHoods').value.split(',').map(x=>x.trim()).filter(Boolean),service_ids:[]};let x=await post('/api/sniper/query-plan',body);$('planOut').textContent=x.queries.map(q=>q.service_id+' · '+q.query).join('\n')}catch(e){$('planOut').textContent=e.message}}
+$('plan').onclick=async()=>{try{let body={city:$('qpCity').value,state:$('qpState').value||null,neighborhoods:$('qpHoods').value.split(',').map(x=>x.trim()).filter(Boolean),service_ids:$('qpServices').value.split(',').map(x=>x.trim()).filter(Boolean)};let x=await post('/api/sniper/query-plan',body);$('planOut').textContent=x.queries.map(q=>q.service_id+' · '+q.query).join('\n')}catch(e){$('planOut').textContent=e.message}}
+$('createSniperJob').onclick=async()=>{try{let body={city:$('qpCity').value,state:$('qpState').value||null,neighborhoods:$('qpHoods').value.split(',').map(x=>x.trim()).filter(Boolean),service_ids:$('qpServices').value.split(',').map(x=>x.trim()).filter(Boolean),result_limit:20};let x=await post('/api/sniper/scrape-jobs',body);$('jobId').value=x.job_id;$('planOut').textContent='Job #'+x.job_id+' criado · '+x.total_searches+' buscas planejadas. O Matrix iniciou a coleta e o Account Research entrará automaticamente após a conclusão.';setTimeout(refreshQueue,2500)}catch(e){$('planOut').textContent=e.message}}
 async function loadAccounts(){
  try{
   let q=encodeURIComponent($('accountSearch').value||''),t=encodeURIComponent($('tierFilter').value||'');
