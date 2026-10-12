@@ -1,0 +1,38 @@
+name: Inspect Sniper V2 Deep
+
+on:
+  push:
+    paths:
+      - ".github/workflows/inspect_sniper_v2_deep.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Prepare SSH
+        shell: bash
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/matrix_vps
+          chmod 600 ~/.ssh/matrix_vps
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Inspect
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/e716dd310c0c1cd2f83d5f60b191737fb0bcdd05/ops/approved/inspect_sniper_v2_deep_20261012.sh" -o /tmp/inspect_sniper_v2_deep.sh
+          chmod 700 /tmp/inspect_sniper_v2_deep.sh
+          scp -i ~/.ssh/matrix_vps -o BatchMode=yes /tmp/inspect_sniper_v2_deep.sh "$VPS_USER@$VPS_HOST:/tmp/inspect_sniper_v2_deep.sh"
+          ssh -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST" 'bash /tmp/inspect_sniper_v2_deep.sh; rc=$?; rm -f /tmp/inspect_sniper_v2_deep.sh; exit $rc'
