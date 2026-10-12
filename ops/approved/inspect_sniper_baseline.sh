@@ -1,21 +1,33 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -u
 cd /opt/matrix-scraper-v1
 
-echo "=== FILE TREE ==="
-find app -maxdepth 3 -type f | sort | sed -n '1,260p'
+echo "=== ROOT ==="
+find . -maxdepth 1 -type f -printf '%f\n' | sort
 
-echo "=== COMPOSE ==="
-sed -n '1,260p' docker-compose.yml
+echo "=== SNIPER V2 API ==="
+sed -n '1,360p' app/sniper_v2/api.py
 
-echo "=== DB TABLES ==="
-docker exec matrix_v1_db psql -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-postgres} -Atc "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename;" 2>/dev/null || docker exec matrix_v1_db psql -U postgres -Atc "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename;" 2>/dev/null || true
+echo "=== SNIPER V2 CORE ==="
+sed -n '1,520p' app/sniper_v2/core.py
 
-echo "=== SCRAPER MAIN HOOKS ==="
-grep -nE '^def |^async def |lead_target|m2_|intelligence|run_job|process_job|status' app/scraper.py | sed -n '1,360p'
+echo "=== SNIPER V2 HTML ==="
+sed -n '1,420p' app/sniper_v2/sniper.html
 
-echo "=== MAIN API ROUTES ==="
-grep -nE '^@app\.(get|post|put|delete)|^def |^async def ' app/main.py | sed -n '1,420p'
+echo "=== MAIN SNIPER IMPORTS/ROUTES ==="
+grep -n -A60 -B30 -E 'sniper_v2|matrix_intelligence|include_router' app/main.py | sed -n '1,520p'
 
-echo "=== INTELLIGENCE FILES ==="
-find app/matrix_intelligence -maxdepth 2 -type f -print -exec sh -c 'echo "--- $1"; grep -nE "^def |^async def |CREATE TABLE|INSERT INTO|UPDATE " "$1" | head -180' _ {} \; 2>/dev/null | sed -n '1,780p'
+echo "=== DB BOOTSTRAP ==="
+sed -n '1,360p' app/db.py
+
+echo "=== REQUIREMENTS ==="
+cat app/requirements.txt
+
+echo "=== DB TABLES VIA APP ENV ==="
+docker exec matrix_v1_app python - <<'PY'
+from db import get_conn
+with get_conn() as conn:
+  with conn.cursor() as cur:
+    cur.execute("SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename")
+    print("\n".join(r[0] for r in cur.fetchall()))
+PY
