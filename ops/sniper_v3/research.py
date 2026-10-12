@@ -176,7 +176,7 @@ def add_evidence(conn,account_id,claim_type,claim_value,source_type,source_url,s
 
 def _company_row(conn,company_id):
     with conn.cursor() as cur:
-        cur.execute("""SELECT id,name,normalized_name,address,address_raw,neighborhood,city,state,phone_raw,phone_normalized,
+        cur.execute("""SELECT id,name,normalized_name,address,neighborhood,city,state,phone_raw,phone_normalized,
                               mobile_phone,landline_phone,website_url,website_status,rating,review_count,latitude,longitude,
                               category_primary,category_secondary,maps_url,source_key,last_seen_at
                        FROM companies WHERE id=%s""",(company_id,))
@@ -229,7 +229,7 @@ def resolve_account(conn,company_id):
                        source_type,source_url,observed_at) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,'google_maps',%s,now())
                        ON CONFLICT(account_id,branch_key) DO UPDATE SET address=excluded.address,latitude=excluded.latitude,
                        longitude=excluded.longitude,observed_at=excluded.observed_at""",
-                    (account["account_id"],c.get("source_key") or str(company_id),c.get("address") or c.get("address_raw"),
+                    (account["account_id"],c.get("source_key") or str(company_id),c.get("address"),
                      c.get("neighborhood"),c.get("city"),c.get("state"),c.get("latitude"),c.get("longitude"),c.get("maps_url")))
     return account,c
 
