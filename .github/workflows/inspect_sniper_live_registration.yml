@@ -1,4 +1,4 @@
-name: Inspect Sniper Live Registration
+name: Inspect Sniper Live V3 Details
 on:
   push:
     paths:
@@ -28,7 +28,7 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
         run: |
           set -euo pipefail
-          curl -fsSL https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/main/ops/approved/inspect_sniper_live_registration.sh -o /tmp/i.sh
+          curl -fsSL https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/main/ops/approved/inspect_sniper_live2.sh -o /tmp/i.sh
           chmod 700 /tmp/i.sh
           scp -i ~/.ssh/matrix_vps -o BatchMode=yes /tmp/i.sh "$VPS_USER@$VPS_HOST:/tmp/i.sh"
           ssh -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST" 'bash /tmp/i.sh; rc=$?; rm -f /tmp/i.sh; exit $rc'
