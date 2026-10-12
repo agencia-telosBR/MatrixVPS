@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Matrix Sniper | Account Intelligence</title>
+<style>
+:root{--bg:#06120e;--panel:#0d2118;--panel2:#0a1912;--line:#245d43;--green:#2be58d;--text:#e9fff2;--muted:#91b9a3;--warn:#f2c94c;--bad:#ff7979;--blue:#78b7ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,Segoe UI,Arial}
+header{position:sticky;top:0;z-index:5;background:#081b13ee;backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:16px 4vw;display:flex;justify-content:space-between;gap:15px;align-items:center}
+h1{margin:0;color:var(--green);font-size:22px}.sub{color:var(--muted)}a{color:#8ff4be;text-decoration:none}
+main{max-width:1280px;margin:auto;padding:22px}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:17px}.c4{grid-column:span 4}.c6{grid-column:span 6}.c8{grid-column:span 8}.c12{grid-column:span 12}
+@media(max-width:900px){.c4,.c6,.c8{grid-column:span 12}}
+h2{margin:0 0 12px;color:#75efaf;font-size:17px}h3{margin:14px 0 8px}.row{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.field{flex:1;min-width:160px}
+label{display:block;color:var(--muted);margin:7px 0 5px}input,select,textarea{width:100%;background:#06140e;color:var(--text);border:1px solid #337654;border-radius:8px;padding:10px}
+button{background:var(--green);color:#032015;border:0;border-radius:8px;padding:10px 14px;font-weight:800;cursor:pointer}button.secondary{background:#143a2a;color:#dff7e9;border:1px solid #337654}button:disabled{opacity:.45;cursor:not-allowed}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.kpi{background:var(--panel2);border:1px solid #214c39;border-radius:10px;padding:12px}.kpi b{display:block;font-size:22px;color:var(--green)}.kpi span{color:var(--muted)}
+table{width:100%;border-collapse:collapse}th,td{padding:9px;border-bottom:1px solid #214c39;text-align:left;vertical-align:top}th{color:#8df0b9;font-size:12px;text-transform:uppercase}.pill{display:inline-block;border:1px solid #3d795d;border-radius:999px;padding:3px 8px;margin:2px;font-size:12px}.tier{font-weight:900}.tier.Aplus{color:#8dffb9}.tier.A{color:#b8ff8d}.tier.B{color:var(--warn)}.tier.C{color:var(--bad)}
+pre{white-space:pre-wrap;word-break:break-word;background:#05110c;border:1px solid #214c39;padding:12px;border-radius:9px;max-height:420px;overflow:auto}.muted{color:var(--muted)}.ok{color:#8dffb9}.warn{color:var(--warn)}.bad{color:var(--bad)}.link{color:#8acbff}.click{cursor:pointer}.selected{outline:2px solid var(--green)}.section-title{display:flex;justify-content:space-between;align-items:center;gap:10px}
+</style>
+</head>
+<body>
+<header><div><h1>MATRIX SNIPER</h1><div class="sub">Account Intelligence • evidência → score → tese → Account Research Pack</div></div><div><a href="/">← Matrix Scraper</a></div></header>
+<main>
+<div class="grid">
+<section class="card c12">
+<div class="section-title"><h2>1 · Processar um Job concluído</h2><span id="health" class="muted">Verificando...</span></div>
+<div class="row">
+<div class="field"><label>Job ID</label><input id="jobId" type="number" min="1" placeholder="26"></div>
+<div><button id="researchJob">Criar pesquisa Sniper</button></div>
+<div><button id="runQueue" class="secondary">Continuar fila</button></div>
+</div>
+<p class="muted">O Sniper consolida empresas como contas, pesquisa Maps + site + sinais públicos, gera evidências, aplica hard gates, calcula score 0–100 e cria o ARP versionado. Não há meta de volume.</p>
+<pre id="queueStatus">Aguardando Job...</pre>
+</section>
+
+<section class="card c4">
+<h2>2 · Query Planner</h2>
+<div class="field"><label>Cidade</label><input id="qpCity" placeholder="São Paulo"></div>
+<div class="field"><label>UF</label><input id="qpState" placeholder="SP"></div>
+<div class="field"><label>Bairros/regiões separados por vírgula</label><input id="qpHoods" placeholder="Tucuruvi, Santana"></div>
+<button id="plan">Gerar plano de consultas</button>
+<pre id="planOut">A taxonomia Sniper inclui locação, manutenção, emergência, instalação, retrofit, refrigeração industrial, HVAC, câmara fria, torre e CAG.</pre>
+</section>
+
+<section class="card c8">
+<div class="section-title"><h2>3 · Contas pesquisadas</h2><button id="refreshAccounts" class="secondary">Atualizar</button></div>
+<div class="row"><div class="field"><label>Buscar</label><input id="accountSearch" placeholder="Empresa ou domínio"></div><div class="field"><label>Tier</label><select id="tierFilter"><option value="">Todos</option><option>A+</option><option>A</option><option>B</option><option>C</option></select></div><div><button id="searchAccounts">Buscar</button></div></div>
+<div class="kpis" style="margin:12px 0"><div class="kpi"><b id="kTotal">0</b><span>contas</span></div><div class="kpi"><b id="kApproved">0</b><span>A/A+</span></div><div class="kpi"><b id="kAvg">0</b><span>score médio</span></div><div class="kpi"><b id="kFresh">0</b><span>pesquisadas</span></div></div>
+<div style="overflow:auto"><table><thead><tr><th>Conta</th><th>Cidade</th><th>Score</th><th>Tier</th><th>Status</th><th>Confiança</th></tr></thead><tbody id="accounts"></tbody></table></div>
+</section>
+
+<section class="card c12" id="detailCard">
+<div class="section-title"><h2>4 · Account Research Pack</h2><div><button id="exportCsv" class="secondary">Exportar CSV</button></div></div>
+<div id="empty" class="muted">Selecione uma conta para abrir o pack, evidências, score e tese.</div>
+<div id="detail" hidden>
+<div class="kpis"><div class="kpi"><b id="dScore">—</b><span>Sniper Score</span></div><div class="kpi"><b id="dTier">—</b><span>Tier</span></div><div class="kpi"><b id="dConf">—</b><span>Research confidence</span></div><div class="kpi"><b id="dSources">—</b><span>fontes úteis</span></div></div>
+<div class="grid" style="margin-top:12px">
+<div class="card c6"><h3>Identidade / Fit</h3><div id="identity"></div><h3>Serviços confirmados</h3><div id="services"></div><h3>Setores</h3><div id="sectors"></div></div>
+<div class="card c6"><h3>Oportunidade principal</h3><div id="opportunity"></div><h3>Tese comercial</h3><div id="thesis"></div><h3>Reason Now</h3><div id="reasonNow"></div></div>
+<div class="card c6"><h3>Google Opportunity</h3><div id="google"></div></div>
+<div class="card c6"><h3>Score explicável</h3><div id="breakdown"></div><h3>Hard gates</h3><div id="gates"></div></div>
+<div class="card c6"><h3>M1 safe facts</h3><div id="safeFacts"></div><h3>Dor 1 recomendada</h3><div id="dor1"></div></div>
+<div class="card c6"><h3>Triggers</h3><div id="triggers"></div><h3>Contatos públicos</h3><div id="contacts"></div></div>
+<div class="card c12"><div class="section-title"><h3>Evidências e proveniência</h3><button id="loadEvidence" class="secondary">Carregar evidências</button></div><div id="evidence"></div></div>
+</div>
+</div>
+</section>
+</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let currentAccount=null,currentPack=null;
+async function api(url,opt={}){const r=await fetch(url,{credentials:'same-origin',...opt});let j=await r.json().catch(()=>({}));if(!r.ok)throw Error(j.detail||('HTTP '+r.status));return j}
+async function post(url,body={}){return api(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})}
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function pills(arr,key){return (arr||[]).map(x=>'<span class="pill">'+esc(typeof x==='string'?x:(x[key]||JSON.stringify(x)))+'</span>').join('')||'<span class="muted">—</span>'}
+function tierClass(t){return t==='A+'?'Aplus':t}
+async function health(){try{let h=await api('/api/sniper/health');$('health').textContent='Sniper '+h.version+' operacional';$('health').className='ok'}catch(e){$('health').textContent=e.message;$('health').className='bad'}}
+async function refreshQueue(){
+ let id=Number($('jobId').value);if(!id)return;
+ try{let q=await api('/api/sniper/jobs/'+id+'/queue');$('queueStatus').textContent=JSON.stringify(q.counts,null,2);let pending=(q.counts.pending||0)+(q.counts.running||0)+(q.counts.error||0);if(pending)setTimeout(refreshQueue,3500);else loadAccounts()}catch(e){$('queueStatus').textContent=e.message}
+}
+$('researchJob').onclick=async()=>{let id=Number($('jobId').value);if(!id)return;try{$('queueStatus').textContent='Enfileirando...';let x=await post('/api/sniper/jobs/'+id+'/research?limit=200',{});$('queueStatus').textContent=JSON.stringify(x,null,2);setTimeout(refreshQueue,1500)}catch(e){$('queueStatus').textContent=e.message}}
+$('runQueue').onclick=async()=>{let id=Number($('jobId').value)||null;try{let x=await post('/api/sniper/queue/run?limit=200'+(id?'&job_id='+id:''),{});$('queueStatus').textContent=JSON.stringify(x,null,2);refreshQueue()}catch(e){$('queueStatus').textContent=e.message}}
+$('plan').onclick=async()=>{try{let body={city:$('qpCity').value,state:$('qpState').value||null,neighborhoods:$('qpHoods').value.split(',').map(x=>x.trim()).filter(Boolean),service_ids:[]};let x=await post('/api/sniper/query-plan',body);$('planOut').textContent=x.queries.map(q=>q.service_id+' · '+q.query).join('\n')}catch(e){$('planOut').textContent=e.message}}
+async function loadAccounts(){
+ try{
+  let q=encodeURIComponent($('accountSearch').value||''),t=encodeURIComponent($('tierFilter').value||'');
+  let rows=await api('/api/sniper/accounts?q='+q+'&tier='+t+'&limit=200');
+  $('accounts').innerHTML='';let approved=0,sum=0,nscore=0,fresh=0;
+  for(const a of rows){if(['A','A+'].includes(a.sniper_tier))approved++;if(a.sniper_score!=null){sum+=a.sniper_score;nscore++}if(a.last_researched_at)fresh++;
+   let tr=document.createElement('tr');tr.className='click';tr.innerHTML='<td><b>'+esc(a.account_name_canonical)+'</b><br><span class="muted">'+esc(a.canonical_domain||'')+'</span></td><td>'+esc((a.city||'')+'/'+(a.state||''))+'</td><td>'+esc(a.sniper_score??'—')+'</td><td><span class="tier '+tierClass(a.sniper_tier)+'">'+esc(a.sniper_tier||'—')+'</span></td><td>'+esc(a.research_status||'—')+'</td><td>'+esc(a.research_confidence??'—')+'</td>';tr.onclick=()=>openAccount(a.account_id);$('accounts').appendChild(tr)}
+  $('kTotal').textContent=rows.length;$('kApproved').textContent=approved;$('kAvg').textContent=nscore?Math.round(sum/nscore):0;$('kFresh').textContent=fresh;
+ }catch(e){$('accounts').innerHTML='<tr><td colspan="6" class="bad">'+esc(e.message)+'</td></tr>'}
+}
+$('searchAccounts').onclick=loadAccounts;$('refreshAccounts').onclick=loadAccounts;
+async function openAccount(id){
+ currentAccount=id;$('empty').hidden=true;$('detail').hidden=false;$('evidence').innerHTML='<span class="muted">Clique em carregar evidências.</span>';
+ try{let r=await api('/api/sniper/accounts/'+id+'/pack');currentPack=r.pack_json;renderPack(currentPack)}catch(e){$('detail').innerHTML='<div class="bad">'+esc(e.message)+'</div>'}
+}
+function renderPack(p){
+ $('dScore').textContent=p.sniper_score??'—';$('dTier').textContent=p.sniper_tier??'—';$('dConf').textContent=p.research_confidence??'—';$('dSources').textContent=p.source_count??'—';
+ $('identity').innerHTML='<b>'+esc(p.account_name)+'</b><br>'+esc(p.domain||'sem domínio')+'<br><span class="muted">B2B confirmado: '+esc(p.b2b_confirmed)+' · porte: '+esc(p.company_size_band)+' ('+esc(p.company_size_confidence)+')</span>';
+ $('services').innerHTML=pills(p.services_confirmed,'service_id');$('sectors').innerHTML=pills(p.segments_served,'sector_id');
+ $('opportunity').innerHTML=esc(p.primary_opportunity||'Sem tese forte identificada.');$('thesis').innerHTML=esc(p.primary_thesis||'—');$('reasonNow').innerHTML=esc(p.reason_now||'Nenhum trigger recente comprovado; usar fit + oportunidade.');
+ let g=p.google_presence||{};$('google').innerHTML='Cobertura: <b>'+esc(g.coverage_score??0)+'%</b> · '+esc(g.queries_with_presence??0)+'/'+esc(g.queries_checked??0)+' consultas<br>Concorrentes recorrentes: '+pills(g.competitors,'name');
+ $('breakdown').innerHTML=Object.entries(p.score_breakdown||{}).map(([k,v])=>'<div>'+esc(k)+': <b>'+esc(v.points)+'/'+esc(v.max)+'</b></div>').join('');
+ $('gates').innerHTML=p.hard_gates_passed?'<span class="ok">Hard gates aprovados</span>':'<span class="bad">'+esc((p.hard_gate_reasons||[]).join(' · '))+'</span>';
+ $('safeFacts').innerHTML=(p.m1_safe_facts||[]).map(x=>'<div>• '+esc(x.fact)+'</div>').join('')||'<span class="muted">Nenhum fato liberado para M1.</span>';
+ $('dor1').textContent=p.dor1_recommended||'—';
+ $('triggers').innerHTML=(p.trigger_signals||[]).map(x=>'<div><span class="pill">'+esc(x.type)+'</span> '+esc(x.published_at||'sem data publicada')+' '+(x.usable_reason_now?'<span class="ok">válido para reason-now</span>':'<span class="muted">contexto</span>')+'</div>').join('')||'<span class="muted">Nenhum trigger comprovado.</span>';
+ $('contacts').innerHTML=pills(p.contacts,'contact_value');
+}
+$('loadEvidence').onclick=async()=>{if(!currentAccount)return;try{let rows=await api('/api/sniper/accounts/'+currentAccount+'/evidence?limit=300');$('evidence').innerHTML='<div style="overflow:auto"><table><thead><tr><th>Claim</th><th>Fonte</th><th>Conf.</th><th>Trecho</th></tr></thead><tbody>'+rows.map(e=>'<tr><td>'+esc(e.claim_type)+(e.is_inference?' <span class="warn">(inferência)</span>':'')+'</td><td><a class="link" target="_blank" rel="noopener" href="'+esc(e.source_url)+'">'+esc(e.source_type)+'</a><br><span class="muted">'+esc(e.observed_at)+'</span></td><td>'+esc(e.confidence)+'</td><td>'+esc(e.evidence_excerpt||'')+'</td></tr>').join('')+'</tbody></table></div>'}catch(e){$('evidence').textContent=e.message}}
+$('exportCsv').onclick=()=>{location.href='/api/sniper/export.csv'}
+health();loadAccounts();
+</script>
+</body></html>
