@@ -11,7 +11,7 @@ cp app/index.html "$BACKUP/index.html"
 
 echo "[1/8] Download Matrix Sniper V3"
 mkdir -p app/sniper_v3
-BASE="https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/243819013c70c6c1b53cfaf918d16b1d84f124da/ops/sniper_v3"
+BASE="https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/500e8c0db2e02822d162454cd76fba441e3735af/ops/sniper_v3"
 for f in __init__.py core.py research.py api.py sniper.html schema.sql; do
   curl -fsSL "$BASE/$f" -o "app/sniper_v3/$f"
 done
