@@ -1,0 +1,38 @@
+name: Apply Matrix Sniper V3
+
+on:
+  push:
+    paths:
+      - ".github/workflows/apply_sniper_v3.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Prepare SSH
+        shell: bash
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/matrix_vps
+          chmod 600 ~/.ssh/matrix_vps
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+      - name: Deploy Matrix Sniper V3
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/d94eaf73f363fb69e96bb45bcba9e881828fd118/ops/approved/apply_sniper_v3.sh" -o /tmp/apply_sniper_v3.sh
+          chmod 700 /tmp/apply_sniper_v3.sh
+          scp -i ~/.ssh/matrix_vps -o BatchMode=yes /tmp/apply_sniper_v3.sh "$VPS_USER@$VPS_HOST:/tmp/apply_sniper_v3.sh"
+          ssh -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST" 'bash /tmp/apply_sniper_v3.sh; rc=$?; rm -f /tmp/apply_sniper_v3.sh; exit $rc'
