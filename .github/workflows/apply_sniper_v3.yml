@@ -32,7 +32,7 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
         run: |
           set -euo pipefail
-          curl -fsSL "https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/d94eaf73f363fb69e96bb45bcba9e881828fd118/ops/approved/apply_sniper_v3.sh" -o /tmp/apply_sniper_v3.sh
+          curl -fsSL "https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/4e99e9f5694c678ffa79ab6bebaea6b571b298ac/ops/approved/apply_sniper_v3.sh" -o /tmp/apply_sniper_v3.sh
           chmod 700 /tmp/apply_sniper_v3.sh
           scp -i ~/.ssh/matrix_vps -o BatchMode=yes /tmp/apply_sniper_v3.sh "$VPS_USER@$VPS_HOST:/tmp/apply_sniper_v3.sh"
           ssh -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST" 'bash /tmp/apply_sniper_v3.sh; rc=$?; rm -f /tmp/apply_sniper_v3.sh; exit $rc'
