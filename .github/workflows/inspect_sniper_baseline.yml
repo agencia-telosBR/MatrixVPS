@@ -1,4 +1,4 @@
-name: Inspect Sniper Baseline
+name: Inspect Existing Sniper V2
 
 on:
   push:
