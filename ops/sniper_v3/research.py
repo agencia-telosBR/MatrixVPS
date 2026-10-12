@@ -157,6 +157,17 @@ def discover_site_urls(conn,website_url,max_pages=14):
     unique.sort(key=lambda u:(-priority_score(u),len(u)))
     return unique[:max_pages]
 
+def excerpt_around(text, terms, radius=320):
+    raw=str(text or "")
+    low=norm(raw)
+    for term in terms or []:
+        key=norm(term)
+        pos=low.find(key)
+        if pos>=0:
+            start=max(0,pos-radius);end=min(len(raw),pos+len(str(term))+radius)
+            return " ".join(raw[start:end].split())[:1000]
+    return " ".join(raw[:700].split())
+
 def add_evidence(conn,account_id,claim_type,claim_value,source_type,source_url,source_title=None,excerpt=None,
                  confidence=0.8,published_at=None,is_inference=False,inference_basis=None,observed_at=None):
     observed_at=observed_at or utcnow()
@@ -259,6 +270,8 @@ def research_website(conn,account,company):
         if len(text)<80:continue
         page={"url":url,"title":parsed["title"],"text":text[:12000],"hash":r.get("content_hash"),"fetched_at":utcnow().isoformat()}
         pages.append(page);all_text.append(text)
+        if not r.get("cached"):
+            time.sleep(max(0.0,min(float(os.getenv("MATRIX_SNIPER_DOMAIN_DELAY","0.35")),2.0)))
         sh=service_hits(text)
         for sid,hits in sh.items():
             service_map.setdefault(sid,{"hits":[],"pages":[]})
@@ -297,7 +310,7 @@ def persist_website_findings(conn,account_id,data):
             page=next((p for p in data["pages"] if p["url"]==url),None)
             if not page:continue
             evs.append(add_evidence(conn,account_id,"service",{"service_id":sid},"website",url,page["title"],
-                                    excerpt=page["text"][:650],confidence=conf))
+                                    excerpt=excerpt_around(page["text"],info.get("hits") or [sid]),confidence=conf))
         with conn.cursor() as cur:
             cur.execute("""INSERT INTO matrix_account_services(account_id,service_id,confirmed,confidence,evidence_ids,observed_at)
                            VALUES(%s,%s,true,%s,%s::jsonb,now())
@@ -430,7 +443,7 @@ def website_triggers(conn,account_id,data):
         rec=classify_recency(published)
         for typ,kw in hits.items():
             ev=add_evidence(conn,account_id,"trigger",{"type":typ,"keywords":kw},"website",page["url"],page["title"],
-                            excerpt=page["text"][:700],confidence=0.82,published_at=published)
+                            excerpt=excerpt_around(page["text"],kw),confidence=0.82,published_at=published)
             sig={"type":typ,"source_type":"website","source_url":page["url"],"published_at":published.isoformat() if published else None,
                  "observed_at":utcnow().isoformat(),"recency_days":rec["days"],"recency_weight":rec["weight"],
                  "usable_reason_now":rec["usable_reason_now"],"relevance_weight":0.75,"evidence_ids":[ev]}
@@ -564,6 +577,17 @@ def build_pack(conn,company_id,force=False):
     opp,impl,thesis,reason,safe,dor=synthesize(pack)
     pack.update(primary_opportunity=opp,business_implication=impl,primary_thesis=thesis,reason_now=reason,
                 m1_safe_facts=safe,dor1_recommended=dor)
+    if impl:
+        basis=[]
+        for item in safe:
+            basis.extend(item.get("evidence_ids") or [])
+        try:
+            inference_id=add_evidence(conn,aid,"commercial_implication",{"value":impl},"inference",
+                                      f"matrix://account/{aid}/synthesis","Matrix Sniper synthesis",impl,0.72,
+                                      is_inference=True,inference_basis=list(dict.fromkeys(basis))[:20])
+            pack["business_implication_evidence_id"]=inference_id
+        except Exception:
+            pass
     score=deterministic_score(pack)
     pack.update(sniper_score=score["score"],sniper_tier=score["tier"],score_breakdown=score["breakdown"],
                 hard_gates_passed=score["hard_gates_passed"],hard_gate_reasons=score["hard_gate_reasons"],
