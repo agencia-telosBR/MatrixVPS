@@ -91,8 +91,19 @@ def register_sniper_v3_routes(app,get_conn,require_user):
                             (json.dumps(terms,ensure_ascii=False),json.dumps(neighborhoods,ensure_ascii=False),
                              req.city.strip(),(req.state or "").strip(),req.result_limit,len(terms)*len(neighborhoods)))
                 job_id=cur.fetchone()["id"]
-        return {"ok":True,"job_id":job_id,"terms":terms,"neighborhoods":neighborhoods,
-                "total_searches":len(terms)*len(neighborhoods),"mode":"sniper_query_planner"}
+                planned=query_plan(req.city.strip(),(req.state or "").strip(),neighborhoods,req.service_ids)
+                cur.execute("""INSERT INTO matrix_query_plans(city,state,neighborhoods,service_ids,status,job_id,started_at)
+                               VALUES(%s,%s,%s::jsonb,%s::jsonb,'running',%s,now()) RETURNING id""",
+                            (req.city.strip(),(req.state or "").strip(),
+                             json.dumps(neighborhoods,ensure_ascii=False),json.dumps(req.service_ids,ensure_ascii=False),job_id))
+                plan_id=cur.fetchone()["id"]
+                for item in planned:
+                    cur.execute("""INSERT INTO matrix_query_plan_items(plan_id,service_id,query_text,scope,status)
+                                   VALUES(%s,%s,%s,%s,'pending') ON CONFLICT(plan_id,query_text) DO NOTHING""",
+                                (plan_id,item["service_id"],item["query"],item.get("scope")))
+        return {"ok":True,"job_id":job_id,"plan_id":plan_id,"terms":terms,"neighborhoods":neighborhoods,
+                "total_searches":len(terms)*len(neighborhoods),"planned_queries":len(planned),
+                "mode":"sniper_query_planner"}
 
     @router.get("/api/sniper/accounts")
     def accounts(q:str="",tier:str|None=None,status:str|None=None,limit:int=50,user_id=Depends(require_user)):
