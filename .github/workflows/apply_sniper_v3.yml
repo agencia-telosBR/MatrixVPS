@@ -1,4 +1,4 @@
-name: Apply Matrix Sniper V3 Full
+name: Apply Matrix Sniper V4 Full
 
 on:
   push:
@@ -32,7 +32,7 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
         run: |
           set -euo pipefail
-          curl -fsSL "https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/53f1cbf8824d75b2791f803033e4a3045b2c833a/ops/approved/apply_sniper_v3.sh" -o /tmp/apply_sniper_v3.sh
+          curl -fsSL "https://raw.githubusercontent.com/agencia-telosBR/MatrixVPS/main/ops/approved/apply_sniper_v3.sh" -o /tmp/apply_sniper_v3.sh
           chmod 700 /tmp/apply_sniper_v3.sh
           scp -i ~/.ssh/matrix_vps -o BatchMode=yes /tmp/apply_sniper_v3.sh "$VPS_USER@$VPS_HOST:/tmp/apply_sniper_v3.sh"
           ssh -i ~/.ssh/matrix_vps -o BatchMode=yes "$VPS_USER@$VPS_HOST" 'bash /tmp/apply_sniper_v3.sh; rc=$?; rm -f /tmp/apply_sniper_v3.sh; exit $rc'
