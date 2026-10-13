@@ -680,6 +680,16 @@ def enqueue_job(conn,job_id):
 
 def process_queue(get_conn,job_id=None,limit=25):
     processed=0;errors=0
+    run_id=None
+    if job_id:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""INSERT INTO matrix_sniper_runs(job_id,status)
+                                   VALUES(%s,'running') RETURNING id""",(job_id,))
+                    run_id=cur.fetchone()["id"]
+        except Exception:
+            run_id=None
     while processed<limit:
         with get_conn() as conn:
             with conn.cursor() as cur:
@@ -706,4 +716,35 @@ def process_queue(get_conn,job_id=None,limit=25):
                     cur.execute("""UPDATE matrix_research_queue SET status='error',last_error=%s,updated_at=now() WHERE id=%s""",
                                 (str(exc)[:1000],q["id"]))
                 errors+=1;processed+=1
-    return {"processed":processed,"errors":errors}
+    if run_id:
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""SELECT count(*) AS discovered FROM matrix_research_queue WHERE job_id=%s""",(job_id,))
+                    discovered=cur.fetchone()["discovered"]
+                    cur.execute("""SELECT
+                                     count(*) FILTER (WHERE q.status='completed') AS researched,
+                                     count(*) FILTER (WHERE a.sniper_tier IN ('A','A+')) AS approved,
+                                     count(*) FILTER (WHERE a.research_status='review') AS review,
+                                     count(*) FILTER (WHERE a.research_status='rejected') AS rejected,
+                                     avg(a.research_confidence) AS avg_conf
+                                   FROM matrix_research_queue q
+                                   LEFT JOIN matrix_accounts a ON a.account_id=q.account_id
+                                   WHERE q.job_id=%s""",(job_id,))
+                    stats=cur.fetchone()
+                    cur.execute("""SELECT count(*) AS n FROM matrix_account_evidence e
+                                   WHERE e.account_id IN (SELECT account_id FROM matrix_research_queue WHERE job_id=%s AND account_id IS NOT NULL)""",(job_id,))
+                    evn=cur.fetchone()["n"]
+                    cur.execute("""UPDATE matrix_sniper_runs SET finished_at=now(),status=%s,
+                                   discovered_accounts=%s,researched_accounts=%s,approved_accounts=%s,
+                                   review_accounts=%s,rejected_accounts=%s,evidence_count=%s,avg_research_confidence=%s
+                                   WHERE id=%s""",
+                                ('completed' if errors==0 else 'completed_with_errors',
+                                 discovered,stats["researched"] or 0,stats["approved"] or 0,stats["review"] or 0,
+                                 stats["rejected"] or 0,evn,stats["avg_conf"],run_id))
+                    cur.execute("""UPDATE matrix_query_plans SET status='completed',finished_at=now(),
+                                   stop_reason=COALESCE(stop_reason,'all_configured_queries_executed')
+                                   WHERE job_id=%s AND status<>'completed'""",(job_id,))
+        except Exception:
+            pass
+    return {"processed":processed,"errors":errors,"run_id":run_id}
