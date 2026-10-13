@@ -209,8 +209,8 @@ def deterministic_score(ctx):
 
     # maturity 20
     mat=ctx.get("maturity") or {}
-    b2bmat=float(mat.get("b2b_maturity_score") or 0)
-    industrial=float(mat.get("industrial_depth_score") or 0)
+    b2bmat=float(mat.get("b2b_maturity_score") or ctx.get("b2b_maturity_score") or 0)
+    industrial=float(mat.get("industrial_depth_score") or ctx.get("industrial_depth_score") or 0)
     maturity=20*(0.6*b2bmat+0.4*industrial)/100
 
     # timing 15
