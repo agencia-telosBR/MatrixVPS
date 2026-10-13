@@ -399,14 +399,29 @@ def google_presence(conn,account_id,company_id,services):
          "service_matrix":matrix,"competitors":competitors,"competitive_gap_score":round(competitive_gap,1),
          "reputation_gap_score":round(reputation_gap,1),"site_gap_score":site_gap,
          "rating":subject.get("rating"),"review_count":subject.get("review_count")}
-    # persist query evidence
+    # persist query evidence + provenance for every observed query
+    google_evidence_ids=[]
     with conn.cursor() as cur:
         for r in rows[:240]:
+            region=f"{r.get('neighborhood') or ''} {r.get('city') or ''}/{r.get('state') or ''}".strip()
             cur.execute("""INSERT INTO matrix_google_observations(account_id,company_id,job_id,search_id,query_term,region_label,position,
                            result_count,observed_at) VALUES(%s,%s,%s,%s,%s,%s,%s,%s,%s)
                            ON CONFLICT(account_id,search_id) DO UPDATE SET position=excluded.position,result_count=excluded.result_count,observed_at=excluded.observed_at""",
-                        (account_id,company_id,r["job_id"],r["id"],r["term"],f"{r.get('neighborhood') or ''} {r.get('city') or ''}/{r.get('state') or ''}".strip(),
+                        (account_id,company_id,r["job_id"],r["id"],r["term"],region,
                          r.get("position"),r.get("result_count"),r.get("finished_at") or utcnow()))
+            try:
+                ev=add_evidence(
+                    conn,account_id,"google",
+                    {"query":r["term"],"region":region,"position":r.get("position"),"result_count":r.get("result_count")},
+                    "google_maps",f"matrix://search/{r['id']}",f"Google Maps · {r['term']}",
+                    excerpt=(f"Consulta '{r['term']}' em {region}: "
+                             + (f"posição {r.get('position')}" if r.get("position") is not None else "empresa não observada nos resultados coletados")),
+                    confidence=0.95,observed_at=r.get("finished_at") or utcnow()
+                )
+                google_evidence_ids.append(ev)
+            except Exception:
+                pass
+    out["evidence_ids"]=list(dict.fromkeys(google_evidence_ids))
     return out
 
 def maturity_from_site(data,review_count=0):
@@ -516,8 +531,8 @@ def synthesize(pack):
     for svc in pack.get("services_confirmed") or []:
         if svc.get("confidence",0)>=0.80:safe.append({"fact":f"A empresa divulga {svc['service_id']} em fonte pública.","evidence_ids":svc.get("evidence_ids") or []})
     gp=pack.get("google_presence") or {}
-    if gp.get("queries_checked"):
-        safe.append({"fact":f"A análise observou presença em {gp.get('queries_with_presence',0)} de {gp.get('queries_checked',0)} consultas relacionadas.","evidence_ids":[]})
+    if gp.get("queries_checked") and gp.get("evidence_ids"):
+        safe.append({"fact":f"A análise observou presença em {gp.get('queries_with_presence',0)} de {gp.get('queries_checked',0)} consultas relacionadas.","evidence_ids":gp.get("evidence_ids")[:20]})
     dor1="Se aumentarmos a procura pelos serviços prioritários, vocês têm capacidade de absorver mais contratos hoje?" if pack.get("services_confirmed") else None
     return opp,implication,thesis,reason,safe[:8],dor1
 
@@ -545,7 +560,7 @@ def build_pack(conn,company_id,force=False):
         neg.append({"type":"residential_or_off_niche","severity":"reject","terms":website["negative"]})
     b2b=bool(services and (sectors or maturity["b2b_maturity_score"]>=20))
     pack={
-        "schema_version":"matrix.sniper.3.0",
+        "schema_version":"matrix.sniper.4.0",
         "account_id":str(aid),"account_name":account.get("account_name_canonical") or company.get("name"),
         "domain":account.get("canonical_domain"),"locations":[],
         "services_confirmed":services,"segments_served":sectors,"b2b_confirmed":b2b,
@@ -559,9 +574,20 @@ def build_pack(conn,company_id,force=False):
         "trigger_signals":triggers,"negative_signals":neg,
         "entity_resolution_ok":float(account.get("entity_resolution_confidence") or 0)>=0.80,
         "entity_resolution_confidence":float(account.get("entity_resolution_confidence") or 0),
+        "entity_resolution_evidence":account.get("entity_resolution_evidence") or [],
         "active":company.get("last_seen_at") is not None,
         "source_count":source_count,"primary_source_count":1 if website.get("pages") else 0,
-        "research_confidence":conf,"contradictions":[],"missing_information":[],
+        "research_confidence":conf,
+        "contradictions":[],
+        "missing_information":[
+            x for x,missing in (
+                ("website",not bool(website.get("pages"))),
+                ("services_confirmed",not bool(services)),
+                ("segments_served",not bool(sectors)),
+                ("google_presence",not bool(gp.get("queries_checked"))),
+                ("reason_now",not any(t.get("usable_reason_now") for t in triggers)),
+            ) if missing
+        ],
         "geography_evidenced":bool(company.get("city")),"solo_operation":False,
         "weak_web_profile":not bool(website.get("pages")) and conf<0.6,"duplicate_conflict":False,
         "researched_at":utcnow().isoformat(),
@@ -589,9 +615,10 @@ def build_pack(conn,company_id,force=False):
         except Exception:
             pass
     score=deterministic_score(pack)
+    status_map={"APPROVE":"approved","REVIEW":"review","REJECT":"rejected"}
     pack.update(sniper_score=score["score"],sniper_tier=score["tier"],score_breakdown=score["breakdown"],
                 hard_gates_passed=score["hard_gates_passed"],hard_gate_reasons=score["hard_gate_reasons"],
-                score_penalties=score["penalties"],research_status=score["recommendation"].lower())
+                score_penalties=score["penalties"],research_status=status_map.get(score["recommendation"],"review"))
     pack["recommendation"]=score["recommendation"]
     if not pack["primary_thesis"] and pack["recommendation"]=="APPROVE":
         pack["recommendation"]="REVIEW";pack["research_status"]="review"
