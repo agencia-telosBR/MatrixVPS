@@ -328,7 +328,17 @@ def persist_website_findings(conn,account_id,data):
         ev=add_evidence(conn,account_id,"identity",{"cnpj":data["cnpj"]},"website",
                         data["pages"][0]["url"] if data["pages"] else None,None,"CNPJ público identificado no site",0.92)
         with conn.cursor() as cur:
-            cur.execute("UPDATE matrix_accounts SET cnpj=COALESCE(cnpj,%s) WHERE account_id=%s",(data["cnpj"],account_id))
+            cur.execute("SELECT account_id FROM matrix_accounts WHERE cnpj=%s AND account_id<>%s LIMIT 1",(data["cnpj"],account_id))
+            duplicate=cur.fetchone()
+            if duplicate:
+                data["duplicate_account_id"]=str(duplicate["account_id"])
+                add_evidence(conn,account_id,"identity_conflict",
+                             {"cnpj":data["cnpj"],"duplicate_account_id":str(duplicate["account_id"])},
+                             "website",data["pages"][0]["url"] if data["pages"] else "",
+                             "Conflito de entity resolution",
+                             "CNPJ já associado a outra conta canônica; requer MERGE antes de aprovação.",0.98)
+            else:
+                cur.execute("UPDATE matrix_accounts SET cnpj=COALESCE(cnpj,%s) WHERE account_id=%s",(data["cnpj"],account_id))
     for c in data["contacts"]:
         if c.get("type") not in ("email","phone"):continue
         with conn.cursor() as cur:
@@ -595,7 +605,8 @@ def build_pack(conn,company_id,force=False):
             ) if missing
         ],
         "geography_evidenced":bool(company.get("city")),"solo_operation":False,
-        "weak_web_profile":not bool(website.get("pages")) and conf<0.6,"duplicate_conflict":False,
+        "weak_web_profile":not bool(website.get("pages")) and conf<0.6,
+        "duplicate_conflict":bool(website.get("duplicate_account_id")),
         "researched_at":utcnow().isoformat(),
     }
     with conn.cursor() as cur:
