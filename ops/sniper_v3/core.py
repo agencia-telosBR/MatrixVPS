@@ -182,13 +182,16 @@ def deterministic_score(ctx):
     active=ctx.get("active",True) is not False
     source_count=int(ctx.get("source_count") or 0)
     primary_sources=int(ctx.get("primary_source_count") or 0)
+    source_types=set(ctx.get("source_types") or [])
+    has_google=bool((ctx.get("google_presence") or {}).get("queries_checked"))
 
     hard_gate_reasons=[]
     if not b2b:hard_gate_reasons.append("Operação B2B compatível não confirmada")
     if not services:hard_gate_reasons.append("Nenhum serviço-alvo confirmado")
     if not active:hard_gate_reasons.append("Conta sem evidência operacional/ativa")
     if not entity_ok:hard_gate_reasons.append("Entity resolution pendente ou ambígua")
-    if source_count<2 and primary_sources<1:hard_gate_reasons.append("Fontes insuficientes")
+    if not ((primary_sources>=1 and has_google) or len(source_types)>=2):
+        hard_gate_reasons.append("Fontes insuficientes: exigir Google Maps + fonte primária ou duas fontes independentes")
     if any(x.get("severity")=="reject" for x in negatives if isinstance(x,dict)):hard_gate_reasons.append("Sinal negativo eliminatório")
 
     # ICP 30
