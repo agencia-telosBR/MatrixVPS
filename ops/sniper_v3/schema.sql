@@ -204,3 +204,53 @@ CREATE TABLE IF NOT EXISTS matrix_sniper_feedback (
     created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS ix_matrix_feedback_account ON matrix_sniper_feedback(account_id,created_at DESC);
+
+
+CREATE TABLE IF NOT EXISTS matrix_query_plans (
+    id bigserial PRIMARY KEY,
+    city text NOT NULL,
+    state text,
+    neighborhoods jsonb NOT NULL DEFAULT '[]'::jsonb,
+    service_ids jsonb NOT NULL DEFAULT '[]'::jsonb,
+    status varchar(30) NOT NULL DEFAULT 'planned',
+    stop_reason text,
+    job_id bigint REFERENCES scrape_jobs(id) ON DELETE SET NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    started_at timestamptz,
+    finished_at timestamptz
+);
+CREATE INDEX IF NOT EXISTS ix_matrix_query_plans_job ON matrix_query_plans(job_id);
+CREATE INDEX IF NOT EXISTS ix_matrix_query_plans_status ON matrix_query_plans(status,created_at DESC);
+
+CREATE TABLE IF NOT EXISTS matrix_query_plan_items (
+    id bigserial PRIMARY KEY,
+    plan_id bigint NOT NULL REFERENCES matrix_query_plans(id) ON DELETE CASCADE,
+    service_id varchar(80) NOT NULL,
+    query_text text NOT NULL,
+    scope text,
+    status varchar(30) NOT NULL DEFAULT 'pending',
+    result_count integer,
+    new_accounts_count integer,
+    qualified_accounts_count integer,
+    executed_at timestamptz,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    UNIQUE(plan_id,query_text)
+);
+CREATE INDEX IF NOT EXISTS ix_matrix_query_items_plan ON matrix_query_plan_items(plan_id,status,id);
+
+CREATE TABLE IF NOT EXISTS matrix_sniper_runs (
+    id bigserial PRIMARY KEY,
+    job_id bigint REFERENCES scrape_jobs(id) ON DELETE SET NULL,
+    started_at timestamptz NOT NULL DEFAULT now(),
+    finished_at timestamptz,
+    discovered_accounts integer NOT NULL DEFAULT 0,
+    researched_accounts integer NOT NULL DEFAULT 0,
+    approved_accounts integer NOT NULL DEFAULT 0,
+    review_accounts integer NOT NULL DEFAULT 0,
+    rejected_accounts integer NOT NULL DEFAULT 0,
+    evidence_count integer NOT NULL DEFAULT 0,
+    avg_research_confidence numeric(5,3),
+    status varchar(30) NOT NULL DEFAULT 'running',
+    error text
+);
+CREATE INDEX IF NOT EXISTS ix_matrix_sniper_runs_job ON matrix_sniper_runs(job_id,started_at DESC);
