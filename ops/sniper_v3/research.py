@@ -242,6 +242,9 @@ def resolve_account(conn,company_id):
                        longitude=excluded.longitude,observed_at=excluded.observed_at""",
                     (account["account_id"],c.get("source_key") or str(company_id),c.get("address"),
                      c.get("neighborhood"),c.get("city"),c.get("state"),c.get("latitude"),c.get("longitude"),c.get("maps_url")))
+        cur.execute("""UPDATE matrix_accounts SET branch_count_observed=(
+                         SELECT count(*) FROM matrix_account_locations WHERE account_id=%s
+                       ),updated_at=now() WHERE account_id=%s""",(account["account_id"],account["account_id"]))
     return account,c
 
 def _extract_cnpj(text):
