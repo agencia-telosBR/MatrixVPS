@@ -576,7 +576,13 @@ def build_pack(conn,company_id,force=False):
         "entity_resolution_confidence":float(account.get("entity_resolution_confidence") or 0),
         "entity_resolution_evidence":account.get("entity_resolution_evidence") or [],
         "active":company.get("last_seen_at") is not None,
-        "source_count":source_count,"primary_source_count":1 if website.get("pages") else 0,
+        "source_count":source_count,
+        "source_types":sorted(set(
+            (["website"] if website.get("pages") else [])
+            + (["google_maps"] if gp.get("queries_checked") else [])
+            + (["news"] if any(t.get("source_type")=="news" for t in triggers) else [])
+        )),
+        "primary_source_count":1 if website.get("pages") else 0,
         "research_confidence":conf,
         "contradictions":[],
         "missing_information":[
