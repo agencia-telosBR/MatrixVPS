@@ -19,7 +19,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:#05110c;border:1px sol
 </style>
 </head>
 <body>
-<header><div><h1>MATRIX SNIPER</h1><div class="sub">Account Intelligence • evidência → score → tese → Account Research Pack</div></div><div><a href="/">← Matrix Scraper</a></div></header>
+<header><div><h1>MATRIX SNIPER</h1><div class="sub">Account Intelligence • evidência → score → tese → Account Research Pack</div></div><div><span class="muted">Sniper 4.0 · Account Research Pack</span></div></header>
 <main>
 <div class="grid">
 <section class="card c12">
@@ -46,7 +46,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:#05110c;border:1px sol
 <section class="card c8">
 <div class="section-title"><h2>3 · Contas pesquisadas</h2><button id="refreshAccounts" class="secondary">Atualizar</button></div>
 <div class="row"><div class="field"><label>Buscar</label><input id="accountSearch" placeholder="Empresa ou domínio"></div><div class="field"><label>Tier</label><select id="tierFilter"><option value="">Todos</option><option>A+</option><option>A</option><option>B</option><option>C</option></select></div><div><button id="searchAccounts">Buscar</button></div></div>
-<div class="kpis" style="margin:12px 0"><div class="kpi"><b id="kTotal">0</b><span>contas</span></div><div class="kpi"><b id="kApproved">0</b><span>A/A+</span></div><div class="kpi"><b id="kAvg">0</b><span>score médio</span></div><div class="kpi"><b id="kFresh">0</b><span>pesquisadas</span></div></div>
+<div class="kpis" style="margin:12px 0"><div class="kpi"><b id="kTotal">0</b><span>contas</span></div><div class="kpi"><b id="kApproved">0</b><span>A/A+</span></div><div class="kpi"><b id="kAvg">0</b><span>score médio</span></div><div class="kpi"><b id="kFresh">0</b><span>pesquisadas</span></div><div class="kpi"><b id="kEvidence">0</b><span>evidências</span></div><div class="kpi"><b id="kConf">0</b><span>confiança média</span></div></div>
 <div style="overflow:auto"><table><thead><tr><th>Conta</th><th>Cidade</th><th>Score</th><th>Tier</th><th>Status</th><th>Confiança</th></tr></thead><tbody id="accounts"></tbody></table></div>
 </section>
 
@@ -76,7 +76,7 @@ async function post(url,body={}){return api(url,{method:'POST',headers:{'Content
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function pills(arr,key){return (arr||[]).map(x=>'<span class="pill">'+esc(typeof x==='string'?x:(x[key]||JSON.stringify(x)))+'</span>').join('')||'<span class="muted">—</span>'}
 function tierClass(t){return t==='A+'?'Aplus':t}
-async function health(){try{let h=await api('/api/sniper/health');$('health').textContent='Sniper '+h.version+' operacional';$('health').className='ok'}catch(e){$('health').textContent=e.message;$('health').className='bad'}}
+async function health(){try{let h=await api('/api/sniper/health');$('health').textContent='Sniper '+h.version+' operacional';$('health').className='ok';let k=await api('/api/sniper/kpis');if($('kEvidence'))$('kEvidence').textContent=k.evidence?.evidence_count||0;if($('kConf'))$('kConf').textContent=k.summary?.avg_research_confidence??0}catch(e){$('health').textContent=e.message;$('health').className='bad'}}
 async function refreshQueue(){
  let id=Number($('jobId').value);if(!id)return;
  try{let q=await api('/api/sniper/jobs/'+id+'/queue');$('queueStatus').textContent=JSON.stringify(q.counts,null,2);let pending=(q.counts.pending||0)+(q.counts.running||0)+(q.counts.error||0);if(pending)setTimeout(refreshQueue,3500);else loadAccounts()}catch(e){$('queueStatus').textContent=e.message}
