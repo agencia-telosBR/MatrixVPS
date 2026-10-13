@@ -16,7 +16,7 @@ from .core import (
     sector_hits, service_hits, trigger_hits, json_hash
 )
 
-USER_AGENT="MatrixSniper/3.0 (+Account Research; respectful crawler)"
+USER_AGENT="MatrixSniper/4.0 (+Account Research; respectful crawler)"
 DEFAULT_TIMEOUT=12
 MAX_BODY=2_000_000
 
@@ -426,7 +426,7 @@ def google_presence(conn,account_id,company_id,services):
                 ev=add_evidence(
                     conn,account_id,"google",
                     {"query":r["term"],"region":region,"position":r.get("position"),"result_count":r.get("result_count")},
-                    "google_maps",f"matrix://search/{r['id']}",f"Google Maps · {r['term']}",
+                    "google_maps","https://www.google.com/maps/search/?api=1&query="+urllib.parse.quote(f"{r['term']} {region}"),f"Google Maps · {r['term']}",
                     excerpt=(f"Consulta '{r['term']}' em {region}: "
                              + (f"posição {r.get('position')}" if r.get("position") is not None else "empresa não observada nos resultados coletados")),
                     confidence=0.95,observed_at=r.get("finished_at") or utcnow()
