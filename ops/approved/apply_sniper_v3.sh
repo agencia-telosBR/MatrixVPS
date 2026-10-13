@@ -113,7 +113,7 @@ echo "PY_COMPILE_OK"
 
 echo "[6/10] Apply Sniper database model"
 docker cp app/sniper_v3/schema.sql matrix_v1_app:/tmp/sniper_schema.sql
-docker exec matrix_v1_app python - <<'PY'
+docker exec -i matrix_v1_app python - <<'PY'
 from db import get_conn
 sql=open('/tmp/sniper_schema.sql',encoding='utf-8').read()
 with get_conn() as c:
@@ -138,7 +138,7 @@ for p in / /sniper /api/sniper/health /api/sniper/accounts /api/sniper/ontology 
   echo "$p -> $code"
 done
 
-docker exec matrix_v1_app python - <<'PY'
+docker exec -i matrix_v1_app python - <<'PY'
 from db import get_conn
 required={
 'matrix_accounts','matrix_account_company_links','matrix_account_locations','matrix_account_contacts',
@@ -156,7 +156,7 @@ print('LIVE_SCHEMA_OK',len(required))
 PY
 
 echo "[9/10] Core acceptance preflight"
-docker exec matrix_v1_app python - <<'PY'
+docker exec -i matrix_v1_app python - <<'PY'
 from sniper_v3.core import query_plan,deterministic_score
 q=query_plan('São Paulo','SP',['Lapa','Pinheiros'],['chiller_rental','chiller_maintenance','industrial_refrigeration'])
 assert len(q)>=12
@@ -178,7 +178,7 @@ print('CORE_ACCEPTANCE_OK',len(q),x['score'],x['tier'],x['breakdown'])
 PY
 
 echo "[10/10] Worker + UI verification"
-docker exec matrix_v1_worker python - <<'PY'
+docker exec -i matrix_v1_worker python - <<'PY'
 from sniper_v3.research import enqueue_job,process_queue,build_pack
 print('WORKER_SNIPER_IMPORT_OK')
 PY
