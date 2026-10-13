@@ -55,7 +55,7 @@ def register_sniper_v3_routes(app,get_conn,require_user):
 
     @router.get("/api/sniper/health")
     def health(user_id=Depends(require_user)):
-        return {"ok":True,"module":"Matrix Sniper","version":"3.0","account_intelligence":True,
+        return {"ok":True,"module":"Matrix Sniper","version":"4.0","account_intelligence":True,
                 "principle":"evidence_before_inference","volume_target":False}
 
     @router.get("/api/sniper/ontology")
@@ -169,7 +169,7 @@ def register_sniper_v3_routes(app,get_conn,require_user):
                 cur.execute("SELECT id,status FROM scrape_jobs WHERE id=%s",(job_id,))
                 job=cur.fetchone()
                 if not job:raise HTTPException(404,"Job não encontrado")
-                if job["status"]!="completed":raise HTTPException(409,"Conclua o Job antes de iniciar o Account Research.")
+                if job["status"] not in ("completed","completed_with_errors"):raise HTTPException(409,"Conclua o Job antes de iniciar o Account Research.")
             queued=enqueue_job(conn,job_id)
         # Persistent queue is authoritative. Background thread is acceleration, not durability.
         def runner():
@@ -203,10 +203,35 @@ def register_sniper_v3_routes(app,get_conn,require_user):
                                       p.researched_at,p.expires_at,p.pack_json
                                FROM matrix_research_packs p JOIN matrix_accounts a ON a.account_id=p.account_id
                                WHERE p.id IN (SELECT max(id) FROM matrix_research_packs GROUP BY account_id)
-                                 AND p.research_status='approve' AND p.sniper_tier IN('A','A+')
+                                 AND p.research_status='approved' AND p.sniper_tier IN('A','A+')
                                  AND p.expires_at>now()
                                ORDER BY p.sniper_score DESC,p.research_confidence DESC LIMIT %s""",(min(max(limit,1),300),))
                 return [_jsonable(dict(x)) for x in cur.fetchall()]
+
+    @router.get("/api/sniper/kpis")
+    def kpis(user_id=Depends(require_user)):
+        with get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""WITH latest AS (
+                    SELECT DISTINCT ON (account_id) account_id,sniper_score,sniper_tier,research_confidence,research_status,
+                           researched_at,expires_at,pack_json
+                    FROM matrix_research_packs ORDER BY account_id,version DESC
+                )
+                SELECT
+                    count(*) AS accounts_researched,
+                    count(*) FILTER (WHERE sniper_tier IN ('A','A+')) AS approved_tier_count,
+                    round(avg(research_confidence)::numeric,3) AS avg_research_confidence,
+                    count(*) FILTER (WHERE expires_at>now()) AS fresh_packs,
+                    count(*) FILTER (WHERE pack_json ? 'services_confirmed' AND jsonb_array_length(pack_json->'services_confirmed')>0) AS with_service_evidence,
+                    count(*) FILTER (WHERE pack_json ? 'primary_thesis' AND nullif(pack_json->>'primary_thesis','') IS NOT NULL) AS with_thesis
+                FROM latest""")
+                summary=cur.fetchone()
+                cur.execute("""SELECT count(*) AS evidence_count,
+                                      count(*) FILTER (WHERE confidence>=0.80 AND NOT is_inference) AS high_confidence_facts,
+                                      count(*) FILTER (WHERE is_inference) AS inferences
+                               FROM matrix_account_evidence""")
+                ev=cur.fetchone()
+        return _jsonable({"summary":summary,"evidence":ev})
 
     @router.get("/api/sniper/export.csv")
     def export_csv(tier:str|None=None,user_id=Depends(require_user)):
